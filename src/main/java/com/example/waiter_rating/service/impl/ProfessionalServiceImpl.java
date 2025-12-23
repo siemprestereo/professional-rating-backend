@@ -140,4 +140,8 @@ public class ProfessionalServiceImpl implements ProfessionalService {
         response.setCanChangeWorkplace(professional.canChangeWorkplace());
         return response;
     }
+    @Override
+    public Professional findByEmail(String email) {
+        return professionalRepo.findByEmail(email).orElse(null);
+    }
 }
