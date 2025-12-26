@@ -121,10 +121,19 @@ public class AuthController {
                 new UsernamePasswordAuthenticationToken(email, null, Collections.emptyList());
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
+        double reputationScore = professional.getReputationScore() != null
+                ? professional.getReputationScore()
+                : 0.0;
+        int totalRatings = professional.getTotalRatings() != null
+                ? professional.getTotalRatings()
+                : 0;
+
         return ResponseEntity.ok(Map.of(
                 "id", professional.getId(),
                 "email", professional.getEmail(),
-                "name", professional.getName()
+                "name", professional.getName(),
+                "reputationScore", reputationScore,
+                "totalRatings", totalRatings
         ));
     }
 
