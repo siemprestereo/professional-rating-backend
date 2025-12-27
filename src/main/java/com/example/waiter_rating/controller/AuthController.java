@@ -144,22 +144,15 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("message", "Logout exitoso"));
     }
 
-    @DeleteMapping("/delete-account")
-    public ResponseEntity<?> deleteAccount(HttpSession session) {
-        Long userId = (Long) session.getAttribute("userId");
-        String userType = (String) session.getAttribute("userType");
+    @DeleteMapping("/delete-account/{userId}")
+    public ResponseEntity<?> deleteAccount(@PathVariable Long userId, HttpSession session) {
+        // Verificar si hay sesión (opcional para compatibilidad)
+        Long sessionUserId = (Long) session.getAttribute("userId");
 
-        if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "No autenticado"));
-        }
+        // Si no hay sesión, usar el userId del path
+        Long userToDelete = sessionUserId != null ? sessionUserId : userId;
 
-        if (!"PROFESSIONAL".equals(userType)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("error", "Solo profesionales pueden eliminar su cuenta"));
-        }
-
-        Optional<Professional> professionalOpt = professionalRepository.findById(userId);
+        Optional<Professional> professionalOpt = professionalRepository.findById(userToDelete);
 
         if (professionalOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -167,11 +160,13 @@ public class AuthController {
         }
 
         // Eliminar profesional (cascade eliminará CV, ratings, etc.)
-        professionalRepository.deleteById(userId);
+        professionalRepository.deleteById(userToDelete);
 
-        // Invalidar sesión
-        session.invalidate();
-        SecurityContextHolder.clearContext();
+        // Invalidar sesión si existe
+        if (sessionUserId != null) {
+            session.invalidate();
+            SecurityContextHolder.clearContext();
+        }
 
         return ResponseEntity.ok(Map.of("message", "Cuenta eliminada exitosamente"));
     }
