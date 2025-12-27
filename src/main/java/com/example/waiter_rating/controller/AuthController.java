@@ -34,9 +34,11 @@ public class AuthController {
     // Directorio para guardar fotos de perfil
     private static final String UPLOAD_DIR = "uploads/profiles/";
 
-    public AuthController(ProfessionalRepo professionalRepository, PasswordEncoder passwordEncoder) {
+    public AuthController(ProfessionalRepo professionalRepository, PasswordEncoder passwordEncoder, ClientRepo clientRepo) {
         this.professionalRepository = professionalRepository;
         this.passwordEncoder = passwordEncoder;
+        this.clientRepo = clientRepo;
+
 
         // Crear directorio si no existe
         try {
