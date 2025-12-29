@@ -131,4 +131,9 @@ public class ClientServiceImpl implements ClientService {
 
         return saved;
     }
+
+    @Override
+    public Client findByEmail(String email) {
+        return clientRepo.findByEmail(email).orElse(null);
+    }
 }

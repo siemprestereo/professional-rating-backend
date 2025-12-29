@@ -123,6 +123,37 @@ public class ProfessionalServiceImpl implements ProfessionalService {
         professionalRepo.save(professional);
     }
 
+    @Override
+    public Professional findByEmail(String email) {
+        return professionalRepo.findByEmail(email).orElse(null);
+    }
+
+    // ========== NUEVO MÉTODO PARA OAUTH ==========
+    @Override
+    @Transactional
+    public Professional findOrCreateFromGoogle(String email, String name, String googleId, Boolean emailVerified) {
+        // Buscar si ya existe
+        Optional<Professional> existingProfessional = professionalRepo.findByEmail(email);
+
+        if (existingProfessional.isPresent()) {
+            System.out.println("👤 Profesional existente encontrado: " + email);
+            return existingProfessional.get();
+        }
+
+        // Si no existe, crear nuevo
+        System.out.println("➕ Creando nuevo profesional desde Google: " + email);
+        Professional newProfessional = new Professional();
+        newProfessional.setName(name);
+        newProfessional.setEmail(email);
+        newProfessional.setProvider("GOOGLE");
+        newProfessional.setProviderId(googleId);
+        newProfessional.setEmailVerified(emailVerified != null ? emailVerified : false);
+        newProfessional.setMonthlyWorkplaceChanges(0);
+        // ProfessionType se configurará más tarde cuando complete su perfil
+
+        return professionalRepo.save(newProfessional);
+    }
+
     // ========== Mapper ==========
     private ProfessionalResponse toResponse(Professional professional) {
         ProfessionalResponse response = new ProfessionalResponse();
@@ -139,9 +170,5 @@ public class ProfessionalServiceImpl implements ProfessionalService {
         response.setMonthlyWorkplaceChanges(professional.getMonthlyWorkplaceChanges());
         response.setCanChangeWorkplace(professional.canChangeWorkplace());
         return response;
-    }
-    @Override
-    public Professional findByEmail(String email) {
-        return professionalRepo.findByEmail(email).orElse(null);
     }
 }

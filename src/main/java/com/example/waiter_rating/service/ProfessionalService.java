@@ -38,4 +38,6 @@ public interface ProfessionalService {
     void registerWorkplaceChange(Long professionalId);
     /** Buscar professional entity por email (para autenticación) */
     Professional findByEmail(String email);
+
+    Professional findOrCreateFromGoogle(String email, String name, String googleId, Boolean emailVerified);
 }

@@ -46,74 +46,143 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         String googleId = oAuth2User.getAttribute("sub");
         Boolean emailVerified = oAuth2User.getAttribute("email_verified");
 
+        // Capturar el parámetro 'type' de la URL
+        String userType = request.getParameter("type");
+
         System.out.println("🔍 LOGIN CON GOOGLE:");
         System.out.println("   Email: " + email);
         System.out.println("   Name: " + name);
         System.out.println("   Google ID: " + googleId);
+        System.out.println("   User Type: " + userType);
 
-        // Verificar si es un Professional
+        // Buscar si existe como Professional
         Professional professional = professionalService.findByEmail(email);
 
-        if (professional != null) {
-            // Es un Professional
-            System.out.println("✅ Profesional autenticado: " + professional.getName());
+        // Buscar si existe como Client
+        Client client = clientService.findByEmail(email);
 
-            // Generar JWT
-            String token = jwtService.generateToken(
-                    professional.getId(),
-                    "PROFESSIONAL",
-                    professional.getEmail(),
-                    professional.getName()
-            );
-
-            System.out.println("🔑 JWT generado para profesional: " + professional.getEmail());
-
-            // Verificar si tiene perfil completo
-            boolean hasCompleteProfile = professional.getCv() != null;
-
-            String redirectUrl;
-            if (hasCompleteProfile) {
-                redirectUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/professional-dashboard")
-                        .queryParam("token", token)
+        // CASO 1: Quiere loguearse como PROFESSIONAL
+        if ("professional".equalsIgnoreCase(userType)) {
+            // Verificar que NO existe como cliente
+            if (client != null) {
+                System.out.println("❌ Error: Email ya registrado como Cliente");
+                String errorUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/professional-login")
+                        .queryParam("error", "email_already_registered_as_client")
                         .build()
                         .toUriString();
-            } else {
-                redirectUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/professional-register")
-                        .queryParam("step", "complete-profile")
-                        .queryParam("token", token)
-                        .build()
-                        .toUriString();
+                getRedirectStrategy().sendRedirect(request, response, errorUrl);
+                return;
             }
 
-            System.out.println("🔄 Redirigiendo profesional a: " + redirectUrl);
-            getRedirectStrategy().sendRedirect(request, response, redirectUrl);
+            // Si existe como professional, autenticar
+            if (professional != null) {
+                System.out.println("✅ Profesional existente autenticado: " + professional.getName());
+                authenticateAndRedirectProfessional(request, response, professional);
+                return;
+            }
+
+            // Si no existe, crear nuevo professional
+            System.out.println("➕ Creando nuevo profesional");
+            Professional newProfessional = professionalService.findOrCreateFromGoogle(email, name, googleId, emailVerified);
+            authenticateAndRedirectProfessional(request, response, newProfessional);
             return;
         }
 
-        // Si no es Professional, crear como Client
-        Client client = clientService.findOrCreateFromGoogle(email, name, googleId, emailVerified);
+        // CASO 2: Quiere loguearse como CLIENT
+        if ("client".equalsIgnoreCase(userType)) {
+            // Verificar que NO existe como profesional
+            if (professional != null) {
+                System.out.println("❌ Error: Email ya registrado como Profesional");
+                String errorUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/client-login")
+                        .queryParam("error", "email_already_registered_as_professional")
+                        .build()
+                        .toUriString();
+                getRedirectStrategy().sendRedirect(request, response, errorUrl);
+                return;
+            }
 
-        if (client.getId() != null) {
-            System.out.println("✅ Cliente autenticado: " + client.getName() + " (ID: " + client.getId() + ")");
+            // Si existe como client, autenticar
+            if (client != null) {
+                System.out.println("✅ Cliente existente autenticado: " + client.getName());
+                authenticateAndRedirectClient(request, response, client);
+                return;
+            }
 
-            // Generar JWT
-            String token = jwtService.generateToken(
-                    client.getId(),
-                    "CLIENT",
-                    client.getEmail(),
-                    client.getName()
-            );
+            // Si no existe, crear nuevo client
+            System.out.println("➕ Creando nuevo cliente");
+            Client newClient = clientService.findOrCreateFromGoogle(email, name, googleId, emailVerified);
+            authenticateAndRedirectClient(request, response, newClient);
+            return;
+        }
 
-            System.out.println("🔑 JWT generado para cliente: " + client.getEmail());
+        // CASO 3: No se especificó tipo (fallback al comportamiento anterior)
+        System.out.println("⚠️ Advertencia: No se especificó tipo de usuario, usando lógica por defecto");
 
-            // Redirigir cliente a su dashboard con el token en la URL
-            String redirectUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/client-dashboard")
+        if (professional != null) {
+            authenticateAndRedirectProfessional(request, response, professional);
+            return;
+        }
+
+        if (client == null) {
+            client = clientService.findOrCreateFromGoogle(email, name, googleId, emailVerified);
+        }
+        authenticateAndRedirectClient(request, response, client);
+    }
+
+    private void authenticateAndRedirectProfessional(HttpServletRequest request,
+                                                     HttpServletResponse response,
+                                                     Professional professional) throws IOException {
+        // Generar JWT
+        String token = jwtService.generateToken(
+                professional.getId(),
+                "PROFESSIONAL",
+                professional.getEmail(),
+                professional.getName()
+        );
+
+        System.out.println("🔑 JWT generado para profesional: " + professional.getEmail());
+
+        // Verificar si tiene perfil completo
+        boolean hasCompleteProfile = professional.getCv() != null;
+
+        String redirectUrl;
+        if (hasCompleteProfile) {
+            redirectUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/professional-dashboard")
                     .queryParam("token", token)
                     .build()
                     .toUriString();
-
-            System.out.println("🔄 Redirigiendo cliente a: " + redirectUrl);
-            getRedirectStrategy().sendRedirect(request, response, redirectUrl);
+        } else {
+            redirectUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/professional-register")
+                    .queryParam("step", "complete-profile")
+                    .queryParam("token", token)
+                    .build()
+                    .toUriString();
         }
+
+        System.out.println("🔄 Redirigiendo profesional a: " + redirectUrl);
+        getRedirectStrategy().sendRedirect(request, response, redirectUrl);
+    }
+
+    private void authenticateAndRedirectClient(HttpServletRequest request,
+                                               HttpServletResponse response,
+                                               Client client) throws IOException {
+        // Generar JWT
+        String token = jwtService.generateToken(
+                client.getId(),
+                "CLIENT",
+                client.getEmail(),
+                client.getName()
+        );
+
+        System.out.println("🔑 JWT generado para cliente: " + client.getEmail());
+
+        // Redirigir cliente a su dashboard con el token en la URL
+        String redirectUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/client-dashboard")
+                .queryParam("token", token)
+                .build()
+                .toUriString();
+
+        System.out.println("🔄 Redirigiendo cliente a: " + redirectUrl);
+        getRedirectStrategy().sendRedirect(request, response, redirectUrl);
     }
 }

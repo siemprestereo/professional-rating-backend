@@ -29,5 +29,6 @@ public interface ClientService {
     /** Buscar o crear cliente desde OAuth2 Google */
     Client findOrCreateFromGoogle(String email, String name, String googleId, Boolean emailVerified);
 
+    Client findByEmail(String email);
 
 }
