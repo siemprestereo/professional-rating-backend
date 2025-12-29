@@ -1,5 +1,6 @@
 package com.example.waiter_rating.config;
 
+import com.example.waiter_rating.security.JwtAuthenticationFilter;
 import com.example.waiter_rating.security.OAuth2LoginSuccessHandler;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
@@ -8,9 +9,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -22,12 +25,15 @@ import java.util.Arrays;
 public class SecurityConfig {
 
     private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Value("${app.cors.allowed-origins}")
     private String allowedOrigins;
 
-    public SecurityConfig(OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler) {
+    public SecurityConfig(OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler,
+                          JwtAuthenticationFilter jwtAuthenticationFilter) {
         this.oAuth2LoginSuccessHandler = oAuth2LoginSuccessHandler;
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
     @Bean
@@ -73,12 +79,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/cv/professional/**").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/cv/professional/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/restaurants").permitAll()
-                        // ❌ REMOVIDO: .requestMatchers(HttpMethod.POST, "/api/qr/generate").permitAll()
                         .requestMatchers("/api/cv/me/**").permitAll()
 
                         // ========== ENDPOINTS PROTEGIDOS (requieren autenticación) ==========
                         // QR - Generar (solo profesionales autenticados)
-                        .requestMatchers(HttpMethod.POST, "/api/qr/generate").authenticated()  // ← AGREGADO
+                        .requestMatchers(HttpMethod.POST, "/api/qr/generate").authenticated()
 
                         // QR - Invalidar (solo meseros autenticados)
                         .requestMatchers(HttpMethod.POST, "/api/qr/{code}/invalidate").authenticated()
@@ -90,11 +95,9 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(org.springframework.security.config.http.SessionCreationPolicy.ALWAYS)  // ← CAMBIO: IF_REQUIRED → ALWAYS
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)  // ← CAMBIO: STATELESS para JWT
                 )
-                .securityContext(context -> context
-                        .requireExplicitSave(false)  // ← AGREGADO: Auto-guardar el contexto en la sesión
-                )
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)  // ← AGREGAR filtro JWT
                 .oauth2Login(oauth2 -> oauth2
                         .successHandler(oAuth2LoginSuccessHandler)
                 )
@@ -124,7 +127,7 @@ public class SecurityConfig {
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
-        configuration.setExposedHeaders(Arrays.asList("Set-Cookie"));
+        configuration.setExposedHeaders(Arrays.asList("Set-Cookie", "Authorization"));  // ← AGREGAR Authorization
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
@@ -135,6 +138,4 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-
-
 }

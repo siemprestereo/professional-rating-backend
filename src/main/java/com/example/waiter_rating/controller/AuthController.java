@@ -4,12 +4,11 @@ import com.example.waiter_rating.model.Client;
 import com.example.waiter_rating.model.Professional;
 import com.example.waiter_rating.repository.ClientRepo;
 import com.example.waiter_rating.repository.ProfessionalRepo;
-import jakarta.servlet.http.HttpSession;
+import com.example.waiter_rating.service.JwtService;
+import jakarta.servlet.http.HttpServletRequest;
 import net.coobird.thumbnailator.Thumbnails;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -18,7 +17,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 
@@ -28,17 +26,20 @@ public class AuthController {
 
     private final ProfessionalRepo professionalRepository;
     private final PasswordEncoder passwordEncoder;
-
     private final ClientRepo clientRepo;
+    private final JwtService jwtService;
 
     // Directorio para guardar fotos de perfil
     private static final String UPLOAD_DIR = "uploads/profiles/";
 
-    public AuthController(ProfessionalRepo professionalRepository, PasswordEncoder passwordEncoder, ClientRepo clientRepo) {
+    public AuthController(ProfessionalRepo professionalRepository,
+                          PasswordEncoder passwordEncoder,
+                          ClientRepo clientRepo,
+                          JwtService jwtService) {
         this.professionalRepository = professionalRepository;
         this.passwordEncoder = passwordEncoder;
         this.clientRepo = clientRepo;
-
+        this.jwtService = jwtService;
 
         // Crear directorio si no existe
         try {
@@ -49,7 +50,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody Map<String, String> request, HttpSession session) {
+    public ResponseEntity<?> register(@RequestBody Map<String, String> request) {
         String email = request.get("email");
         String password = request.get("password");
         String name = request.get("name");
@@ -70,14 +71,13 @@ public class AuthController {
 
         professionalRepository.save(professional);
 
-        // Crear sesión HTTP
-        session.setAttribute("userId", professional.getId());
-        session.setAttribute("userType", "PROFESSIONAL");
-
-        // Autenticar en Spring Security
-        UsernamePasswordAuthenticationToken authentication =
-                new UsernamePasswordAuthenticationToken(email, null, Collections.emptyList());
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+        // Generar JWT
+        String token = jwtService.generateToken(
+                professional.getId(),
+                "PROFESSIONAL",
+                professional.getEmail(),
+                professional.getName()
+        );
 
         double reputationScore = professional.getReputationScore() != null
                 ? professional.getReputationScore()
@@ -87,6 +87,7 @@ public class AuthController {
                 : 0;
 
         return ResponseEntity.ok(Map.of(
+                "token", token,
                 "id", professional.getId(),
                 "email", professional.getEmail(),
                 "name", professional.getName(),
@@ -96,7 +97,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody Map<String, String> request, HttpSession session) {
+    public ResponseEntity<?> login(@RequestBody Map<String, String> request) {
         String email = request.get("email");
         String password = request.get("password");
 
@@ -118,14 +119,13 @@ public class AuthController {
                     .body(Map.of("error", "Credenciales inválidas"));
         }
 
-        // Crear sesión HTTP
-        session.setAttribute("userId", professional.getId());
-        session.setAttribute("userType", "PROFESSIONAL");
-
-        // Autenticar in Spring Security
-        UsernamePasswordAuthenticationToken authentication =
-                new UsernamePasswordAuthenticationToken(email, null, Collections.emptyList());
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+        // Generar JWT
+        String token = jwtService.generateToken(
+                professional.getId(),
+                "PROFESSIONAL",
+                professional.getEmail(),
+                professional.getName()
+        );
 
         double reputationScore = professional.getReputationScore() != null
                 ? professional.getReputationScore()
@@ -135,6 +135,7 @@ public class AuthController {
                 : 0;
 
         return ResponseEntity.ok(Map.of(
+                "token", token,
                 "id", professional.getId(),
                 "email", professional.getEmail(),
                 "name", professional.getName(),
@@ -144,19 +145,18 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(HttpSession session) {
-        session.invalidate();
-        SecurityContextHolder.clearContext();
+    public ResponseEntity<?> logout() {
+        // Con JWT, el logout se maneja en el frontend eliminando el token
         return ResponseEntity.ok(Map.of("message", "Logout exitoso"));
     }
 
     @DeleteMapping("/delete-account/{userId}")
-    public ResponseEntity<?> deleteAccount(@PathVariable Long userId, HttpSession session) {
-        // Verificar si hay sesión (opcional para compatibilidad)
-        Long sessionUserId = (Long) session.getAttribute("userId");
+    public ResponseEntity<?> deleteAccount(@PathVariable Long userId, HttpServletRequest request) {
+        // Obtener userId del JWT (guardado por el filtro)
+        Long authenticatedUserId = (Long) request.getAttribute("userId");
 
-        // Si no hay sesión, usar el userId del path
-        Long userToDelete = sessionUserId != null ? sessionUserId : userId;
+        // Usar el userId autenticado si existe, sino usar el del path
+        Long userToDelete = authenticatedUserId != null ? authenticatedUserId : userId;
 
         Optional<Professional> professionalOpt = professionalRepository.findById(userToDelete);
 
@@ -168,19 +168,14 @@ public class AuthController {
         // Eliminar profesional (cascade eliminará CV, ratings, etc.)
         professionalRepository.deleteById(userToDelete);
 
-        // Invalidar sesión si existe
-        if (sessionUserId != null) {
-            session.invalidate();
-            SecurityContextHolder.clearContext();
-        }
-
         return ResponseEntity.ok(Map.of("message", "Cuenta eliminada exitosamente"));
     }
 
     @GetMapping("/me")
-    public ResponseEntity<?> getCurrentUser(HttpSession session) {
-        Long userId = (Long) session.getAttribute("userId");
-        String userType = (String) session.getAttribute("userType");
+    public ResponseEntity<?> getCurrentUser(HttpServletRequest request) {
+        // Obtener userId y userType del JWT (guardados por el filtro)
+        Long userId = (Long) request.getAttribute("userId");
+        String userType = (String) request.getAttribute("userType");
 
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -222,9 +217,10 @@ public class AuthController {
     }
 
     @GetMapping("/me/client")
-    public ResponseEntity<?> getCurrentClient(HttpSession session) {
-        Long userId = (Long) session.getAttribute("userId");
-        String userType = (String) session.getAttribute("userType");
+    public ResponseEntity<?> getCurrentClient(HttpServletRequest request) {
+        // Obtener userId y userType del JWT (guardados por el filtro)
+        Long userId = (Long) request.getAttribute("userId");
+        String userType = (String) request.getAttribute("userType");
 
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -253,9 +249,10 @@ public class AuthController {
     }
 
     @PutMapping("/update-profile")
-    public ResponseEntity<?> updateProfile(@RequestBody Map<String, String> updates, HttpSession session) {
-        Long userId = (Long) session.getAttribute("userId");
-        String userType = (String) session.getAttribute("userType");
+    public ResponseEntity<?> updateProfile(@RequestBody Map<String, String> updates, HttpServletRequest request) {
+        // Obtener userId y userType del JWT (guardados por el filtro)
+        Long userId = (Long) request.getAttribute("userId");
+        String userType = (String) request.getAttribute("userType");
 
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -298,9 +295,10 @@ public class AuthController {
     }
 
     @PostMapping("/upload-photo")
-    public ResponseEntity<?> uploadPhoto(@RequestParam("photo") MultipartFile file, HttpSession session) {
-        Long userId = (Long) session.getAttribute("userId");
-        String userType = (String) session.getAttribute("userType");
+    public ResponseEntity<?> uploadPhoto(@RequestParam("photo") MultipartFile file, HttpServletRequest request) {
+        // Obtener userId y userType del JWT (guardados por el filtro)
+        Long userId = (Long) request.getAttribute("userId");
+        String userType = (String) request.getAttribute("userType");
 
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -370,7 +368,7 @@ public class AuthController {
     // ========== CLIENTES ==========
 
     @PostMapping("/register-client")
-    public ResponseEntity<?> registerClient(@RequestBody Map<String, String> request, HttpSession session) {
+    public ResponseEntity<?> registerClient(@RequestBody Map<String, String> request) {
         String email = request.get("email");
         String password = request.get("password");
         String name = request.get("name");
@@ -391,16 +389,16 @@ public class AuthController {
 
         clientRepo.save(client);
 
-        // Crear sesión HTTP
-        session.setAttribute("userId", client.getId());
-        session.setAttribute("userType", "CLIENT");
-
-        // Autenticar en Spring Security
-        UsernamePasswordAuthenticationToken authentication =
-                new UsernamePasswordAuthenticationToken(email, null, Collections.emptyList());
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+        // Generar JWT
+        String token = jwtService.generateToken(
+                client.getId(),
+                "CLIENT",
+                client.getEmail(),
+                client.getName()
+        );
 
         return ResponseEntity.ok(Map.of(
+                "token", token,
                 "id", client.getId(),
                 "email", client.getEmail(),
                 "name", client.getName()
@@ -408,7 +406,7 @@ public class AuthController {
     }
 
     @PostMapping("/login-client")
-    public ResponseEntity<?> loginClient(@RequestBody Map<String, String> request, HttpSession session) {
+    public ResponseEntity<?> loginClient(@RequestBody Map<String, String> request) {
         String email = request.get("email");
         String password = request.get("password");
 
@@ -430,16 +428,16 @@ public class AuthController {
                     .body(Map.of("error", "Credenciales inválidas"));
         }
 
-        // Crear sesión HTTP
-        session.setAttribute("userId", client.getId());
-        session.setAttribute("userType", "CLIENT");
-
-        // Autenticar en Spring Security
-        UsernamePasswordAuthenticationToken authentication =
-                new UsernamePasswordAuthenticationToken(email, null, Collections.emptyList());
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+        // Generar JWT
+        String token = jwtService.generateToken(
+                client.getId(),
+                "CLIENT",
+                client.getEmail(),
+                client.getName()
+        );
 
         return ResponseEntity.ok(Map.of(
+                "token", token,
                 "id", client.getId(),
                 "email", client.getEmail(),
                 "name", client.getName()
@@ -447,9 +445,10 @@ public class AuthController {
     }
 
     @DeleteMapping("/delete-account-client/{userId}")
-    public ResponseEntity<?> deleteClientAccount(@PathVariable Long userId, HttpSession session) {
-        Long sessionUserId = (Long) session.getAttribute("userId");
-        Long userToDelete = sessionUserId != null ? sessionUserId : userId;
+    public ResponseEntity<?> deleteClientAccount(@PathVariable Long userId, HttpServletRequest request) {
+        // Obtener userId del JWT (guardado por el filtro)
+        Long authenticatedUserId = (Long) request.getAttribute("userId");
+        Long userToDelete = authenticatedUserId != null ? authenticatedUserId : userId;
 
         Optional<Client> clientOpt = clientRepo.findById(userToDelete);
 
@@ -461,14 +460,6 @@ public class AuthController {
         // Eliminar cliente (cascade eliminará ratings, etc.)
         clientRepo.deleteById(userToDelete);
 
-        // Invalidar sesión si existe
-        if (sessionUserId != null) {
-            session.invalidate();
-            SecurityContextHolder.clearContext();
-        }
-
         return ResponseEntity.ok(Map.of("message", "Cuenta eliminada exitosamente"));
     }
-
-
 }

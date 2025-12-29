@@ -3,16 +3,17 @@ package com.example.waiter_rating.security;
 import com.example.waiter_rating.model.Client;
 import com.example.waiter_rating.model.Professional;
 import com.example.waiter_rating.service.ClientService;
+import com.example.waiter_rating.service.JwtService;
 import com.example.waiter_rating.service.ProfessionalService;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
 
@@ -21,13 +22,17 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
 
     private final ClientService clientService;
     private final ProfessionalService professionalService;
+    private final JwtService jwtService;
 
     @Value("${app.frontend.url}")
     private String frontendUrl;
 
-    public OAuth2LoginSuccessHandler(ClientService clientService, ProfessionalService professionalService) {
+    public OAuth2LoginSuccessHandler(ClientService clientService,
+                                     ProfessionalService professionalService,
+                                     JwtService jwtService) {
         this.clientService = clientService;
         this.professionalService = professionalService;
+        this.jwtService = jwtService;
     }
 
     @Override
@@ -53,18 +58,31 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             // Es un Professional
             System.out.println("✅ Profesional autenticado: " + professional.getName());
 
-            HttpSession session = request.getSession(true);
-            session.setAttribute("userId", professional.getId());
-            session.setAttribute("userType", "PROFESSIONAL");
+            // Generar JWT
+            String token = jwtService.generateToken(
+                    professional.getId(),
+                    "PROFESSIONAL",
+                    professional.getEmail(),
+                    professional.getName()
+            );
+
+            System.out.println("🔑 JWT generado para profesional: " + professional.getEmail());
 
             // Verificar si tiene perfil completo
             boolean hasCompleteProfile = professional.getCv() != null;
 
             String redirectUrl;
             if (hasCompleteProfile) {
-                redirectUrl = frontendUrl + "/professional-dashboard";
+                redirectUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/professional-dashboard")
+                        .queryParam("token", token)
+                        .build()
+                        .toUriString();
             } else {
-                redirectUrl = frontendUrl + "/professional-register?step=complete-profile";
+                redirectUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/professional-register")
+                        .queryParam("step", "complete-profile")
+                        .queryParam("token", token)
+                        .build()
+                        .toUriString();
             }
 
             System.out.println("🔄 Redirigiendo profesional a: " + redirectUrl);
@@ -78,16 +96,24 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         if (client.getId() != null) {
             System.out.println("✅ Cliente autenticado: " + client.getName() + " (ID: " + client.getId() + ")");
 
-            HttpSession session = request.getSession(true);
-            session.setAttribute("userId", client.getId());
-            session.setAttribute("userType", "CLIENT");
+            // Generar JWT
+            String token = jwtService.generateToken(
+                    client.getId(),
+                    "CLIENT",
+                    client.getEmail(),
+                    client.getName()
+            );
 
-            System.out.println("✅ Sesión HTTP creada: " + session.getId());
+            System.out.println("🔑 JWT generado para cliente: " + client.getEmail());
+
+            // Redirigir cliente a su dashboard con el token en la URL
+            String redirectUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/client-dashboard")
+                    .queryParam("token", token)
+                    .build()
+                    .toUriString();
+
+            System.out.println("🔄 Redirigiendo cliente a: " + redirectUrl);
+            getRedirectStrategy().sendRedirect(request, response, redirectUrl);
         }
-
-        // Redirigir cliente a su dashboard
-        String redirectUrl = frontendUrl + "/client-dashboard";
-        System.out.println("🔄 Redirigiendo cliente a: " + redirectUrl);
-        getRedirectStrategy().sendRedirect(request, response, redirectUrl);
     }
 }
