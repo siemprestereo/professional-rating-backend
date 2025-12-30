@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
@@ -46,13 +47,15 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         String googleId = oAuth2User.getAttribute("sub");
         Boolean emailVerified = oAuth2User.getAttribute("email_verified");
 
-        // Capturar el parámetro 'type' de la URL
-        String userType = request.getParameter("type");
+        // Obtener el ID de registro (google-client o google-professional)
+        String registrationId = ((OAuth2AuthenticationToken) authentication).getAuthorizedClientRegistrationId();
+        String userType = registrationId.equals("google-professional") ? "professional" : "client";
 
         System.out.println("🔍 LOGIN CON GOOGLE:");
         System.out.println("   Email: " + email);
         System.out.println("   Name: " + name);
         System.out.println("   Google ID: " + googleId);
+        System.out.println("   Registration ID: " + registrationId);
         System.out.println("   User Type: " + userType);
 
         // Buscar si existe como Professional
@@ -114,19 +117,6 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             authenticateAndRedirectClient(request, response, newClient);
             return;
         }
-
-        // CASO 3: No se especificó tipo (fallback al comportamiento anterior)
-        System.out.println("⚠️ Advertencia: No se especificó tipo de usuario, usando lógica por defecto");
-
-        if (professional != null) {
-            authenticateAndRedirectProfessional(request, response, professional);
-            return;
-        }
-
-        if (client == null) {
-            client = clientService.findOrCreateFromGoogle(email, name, googleId, emailVerified);
-        }
-        authenticateAndRedirectClient(request, response, client);
     }
 
     private void authenticateAndRedirectProfessional(HttpServletRequest request,
