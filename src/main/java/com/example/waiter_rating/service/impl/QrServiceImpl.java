@@ -19,7 +19,7 @@ import java.util.UUID;
 @Service
 public class QrServiceImpl implements QrService {
 
-    private static final int DEFAULT_TTL_MIN = 10;
+    private static final int DEFAULT_TTL_MIN = 3;
     private static final int MIN_TTL_MIN = 1;
     private static final int MAX_TTL_MIN = 5;
 
