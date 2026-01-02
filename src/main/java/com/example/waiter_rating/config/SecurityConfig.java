@@ -75,11 +75,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/restaurants", "/api/restaurants/*").permitAll()
 
                         // ========== SOLO PARA TESTING (eliminar en producción) ==========
-                        .requestMatchers(HttpMethod.POST, "/api/clients", "/api/waiters").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/cv/professional/**").permitAll()
-                        .requestMatchers(HttpMethod.PUT, "/api/cv/professional/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/restaurants").permitAll()
-                        .requestMatchers("/api/cv/me/**").permitAll()
+
 
                         // ========== ENDPOINTS PROTEGIDOS (requieren autenticación) ==========
                         // QR - Generar (solo profesionales autenticados)
