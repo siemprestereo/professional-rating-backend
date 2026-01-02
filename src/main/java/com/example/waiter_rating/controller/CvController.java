@@ -11,7 +11,7 @@ import com.example.waiter_rating.service.AuthService;
 import com.example.waiter_rating.service.CvService;
 import com.example.waiter_rating.service.PdfService;
 import com.example.waiter_rating.service.WorkHistoryService;
-import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -47,9 +47,9 @@ public class CvController {
      * Obtener MI CV (del professional logueado)
      */
     @GetMapping("/me")
-    public ResponseEntity<?> getMyCv(HttpSession session) {
-        Long userId = (Long) session.getAttribute("userId");
-        String userType = (String) session.getAttribute("userType");
+    public ResponseEntity<?> getMyCv(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        String userType = (String) request.getAttribute("userType");
 
         if (userId == null || !"PROFESSIONAL".equals(userType)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -66,10 +66,10 @@ public class CvController {
     @PutMapping("/me/description")
     public ResponseEntity<?> updateMyDescription(
             @Valid @RequestBody CvDescriptionRequest req,
-            HttpSession session) {
+            HttpServletRequest request) {
 
-        Long userId = (Long) session.getAttribute("userId");
-        String userType = (String) session.getAttribute("userType");
+        Long userId = (Long) request.getAttribute("userId");
+        String userType = (String) request.getAttribute("userType");
 
         if (userId == null || !"PROFESSIONAL".equals(userType)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -86,9 +86,9 @@ public class CvController {
      * Listar MI historial laboral
      */
     @GetMapping("/me/work-history")
-    public ResponseEntity<?> listMyWorkHistory(HttpSession session) {
-        Long userId = (Long) session.getAttribute("userId");
-        String userType = (String) session.getAttribute("userType");
+    public ResponseEntity<?> listMyWorkHistory(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        String userType = (String) request.getAttribute("userType");
 
         if (userId == null || !"PROFESSIONAL".equals(userType)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -109,10 +109,10 @@ public class CvController {
     @PostMapping("/me/work-history")
     public ResponseEntity<?> addMyWorkHistory(
             @Valid @RequestBody WorkHistoryRequest req,
-            HttpSession session) {
+            HttpServletRequest request) {
 
-        Long userId = (Long) session.getAttribute("userId");
-        String userType = (String) session.getAttribute("userType");
+        Long userId = (Long) request.getAttribute("userId");
+        String userType = (String) request.getAttribute("userType");
 
         if (userId == null || !"PROFESSIONAL".equals(userType)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -130,10 +130,10 @@ public class CvController {
     public ResponseEntity<?> updateMyWorkHistory(
             @PathVariable Long workHistoryId,
             @Valid @RequestBody WorkHistoryRequest req,
-            HttpSession session) {
+            HttpServletRequest request) {
 
-        Long userId = (Long) session.getAttribute("userId");
-        String userType = (String) session.getAttribute("userType");
+        Long userId = (Long) request.getAttribute("userId");
+        String userType = (String) request.getAttribute("userType");
 
         if (userId == null || !"PROFESSIONAL".equals(userType)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -150,10 +150,10 @@ public class CvController {
     @DeleteMapping("/me/work-history/{workHistoryId}")
     public ResponseEntity<?> deleteMyWorkHistory(
             @PathVariable Long workHistoryId,
-            HttpSession session) {
+            HttpServletRequest request) {
 
-        Long userId = (Long) session.getAttribute("userId");
-        String userType = (String) session.getAttribute("userType");
+        Long userId = (Long) request.getAttribute("userId");
+        String userType = (String) request.getAttribute("userType");
 
         if (userId == null || !"PROFESSIONAL".equals(userType)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -168,9 +168,9 @@ public class CvController {
      * Habilitar trabajo freelance
      */
     @PostMapping("/me/enable-freelance")
-    public ResponseEntity<?> enableFreelance(HttpSession session) {
-        Long userId = (Long) session.getAttribute("userId");
-        String userType = (String) session.getAttribute("userType");
+    public ResponseEntity<?> enableFreelance(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        String userType = (String) request.getAttribute("userType");
 
         if (userId == null || !"PROFESSIONAL".equals(userType)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
