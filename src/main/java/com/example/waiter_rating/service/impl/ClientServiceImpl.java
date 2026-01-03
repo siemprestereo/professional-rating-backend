@@ -4,9 +4,12 @@ import com.example.waiter_rating.dto.request.ClientRequest;
 import com.example.waiter_rating.dto.response.ClientResponse;
 import com.example.waiter_rating.model.Client;
 import com.example.waiter_rating.model.AppUser;
+import com.example.waiter_rating.model.Professional;
 import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.repository.ClientRepo;
+import com.example.waiter_rating.repository.ProfessionalRepo;
 import com.example.waiter_rating.service.ClientService;
+import com.example.waiter_rating.service.CvService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,9 +24,15 @@ public class ClientServiceImpl implements ClientService {
     private final ClientRepo clientRepo;
     private final AppUserRepo appUserRepo;
 
-    public ClientServiceImpl(ClientRepo clientRepo, AppUserRepo appUserRepo) {
+    private final ProfessionalRepo professionalRepo;
+
+    private final CvService cvService;
+
+    public ClientServiceImpl(ClientRepo clientRepo, AppUserRepo appUserRepo, ProfessionalRepo professionalRepo, CvService cvService) {
         this.clientRepo = clientRepo;
         this.appUserRepo = appUserRepo;
+        this.professionalRepo = professionalRepo;
+        this.cvService = cvService;
     }
 
     @Override
@@ -135,5 +144,43 @@ public class ClientServiceImpl implements ClientService {
     @Override
     public Client findByEmail(String email) {
         return clientRepo.findByEmail(email).orElse(null);
+    }
+
+    @Override
+    @Transactional
+    public Professional upgradeToProfessional(Long clientId, String professionType, String professionalTitle) {
+        // 1. Buscar el cliente
+        Client client = clientRepo.findById(clientId)
+                .orElseThrow(() -> new IllegalArgumentException("Cliente no encontrado"));
+
+        // 2. Verificar que no sea ya un profesional
+        if (!(client instanceof Client)) {
+            throw new IllegalStateException("Este usuario ya es un profesional");
+        }
+
+        // 3. Crear el nuevo Professional con los mismos datos básicos
+        Professional professional = new Professional();
+        professional.setEmail(client.getEmail());
+        professional.setName(client.getName());
+        professional.setPassword(client.getPassword());
+        professional.setProfilePicture(client.getProfilePicture());
+        professional.setEmailVerified(client.getEmailVerified());
+        professional.setProvider(client.getProvider());
+        professional.setGoogleId(client.getGoogleId());
+        professional.setProfessionType(professionType);
+        professional.setProfessionalTitle(professionalTitle);
+
+        // 4. Eliminar el cliente viejo
+        clientRepo.delete(client);
+
+        // 5. Guardar el profesional nuevo
+        professional = professionalRepo.save(professional);
+
+        // 6. Crear CV vacío para el profesional
+        cvService.getOrCreateForProfessional(professional.getId());
+
+        System.out.println("✅ Cliente " + clientId + " convertido a Professional " + professional.getId());
+
+        return professional;
     }
 }
