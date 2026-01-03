@@ -12,13 +12,15 @@ import com.example.waiter_rating.service.RoleSwitchService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 @Service
 public class RoleSwitchServiceImpl implements RoleSwitchService {
     private final AppUserRepo appUserRepo;
     private final ClientRepo clientRepo;
     private final ProfessionalRepo professionalRepo;
     private final CvService cvService;
-
 
     public RoleSwitchServiceImpl(AppUserRepo appUserRepo, ClientRepo clientRepo, ProfessionalRepo professionalRepo, CvService cvService) {
         this.appUserRepo = appUserRepo;
@@ -39,7 +41,17 @@ public class RoleSwitchServiceImpl implements RoleSwitchService {
             throw new IllegalStateException("El usuario ya tiene el rol " + newRole);
         }
 
-        // 3. Según el nuevo rol, asegurar que exista el perfil correspondiente
+        // 3. ✅ VALIDACIÓN: Verificar restricción de 6 meses
+        if (!user.canSwitchRole()) {
+            LocalDateTime nextAllowed = user.getNextAllowedRoleSwitchDate();
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            throw new IllegalStateException(
+                    "Solo puedes cambiar de rol una vez cada 6 meses. " +
+                            "Podrás cambiar nuevamente el: " + nextAllowed.format(formatter)
+            );
+        }
+
+        // 4. Según el nuevo rol, asegurar que exista el perfil correspondiente
         if (newRole == AppUser.UserRole.PROFESSIONAL) {
             // Cambiar a PROFESSIONAL
             ensureProfessionalExists(user, professionType, professionalTitle);
@@ -48,8 +60,9 @@ public class RoleSwitchServiceImpl implements RoleSwitchService {
             ensureClientExists(user);
         }
 
-        // 4. Actualizar el rol activo
+        // 5. Actualizar el rol activo y la fecha del último cambio
         user.setActiveRole(newRole);
+        user.setLastRoleSwitchAt(LocalDateTime.now()); // ← NUEVO: Actualizar fecha
         user = appUserRepo.save(user);
 
         System.out.println("✅ Usuario " + userId + " cambió de rol a: " + newRole);

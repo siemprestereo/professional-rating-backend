@@ -57,6 +57,9 @@ public abstract class AppUser {
     @Column(name = "active_role", nullable = false, length = 20)
     private UserRole activeRole = UserRole.CLIENT; // Rol activo del usuario
 
+    @Column(name = "last_role_switch_at")
+    private LocalDateTime lastRoleSwitchAt; // Última vez que cambió de rol
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -65,8 +68,32 @@ public abstract class AppUser {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
+
     // Método abstracto para obtener el tipo de usuario
     public abstract String getUserType();
+
+    /**
+     * Verifica si el usuario puede cambiar de rol
+     * Restricción: solo una vez cada 6 meses
+     */
+    public boolean canSwitchRole() {
+        if (lastRoleSwitchAt == null) {
+            return true; // Primera vez que cambia de rol
+        }
+
+        LocalDateTime sixMonthsAgo = LocalDateTime.now().minusMonths(6);
+        return lastRoleSwitchAt.isBefore(sixMonthsAgo);
+    }
+
+    /**
+     * Obtiene la fecha en que podrá cambiar de rol nuevamente
+     */
+    public LocalDateTime getNextAllowedRoleSwitchDate() {
+        if (lastRoleSwitchAt == null) {
+            return LocalDateTime.now(); // Puede cambiar ahora
+        }
+        return lastRoleSwitchAt.plusMonths(6);
+    }
 
     // Enum para los roles
     public enum UserRole {

@@ -9,6 +9,8 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
 @RestController
@@ -68,16 +70,28 @@ public class RoleSwitchController {
     /**
      * Obtiene el rol activo actual del usuario
      */
+    /**
+     * Obtiene el rol activo actual del usuario y la info de cambio de rol
+     */
     @GetMapping("/current")
     public ResponseEntity<?> getCurrentRole() {
         AppUser currentUser = authService.getCurrentUser()
                 .orElseThrow(() -> new IllegalStateException("Debe estar autenticado"));
 
+        LocalDateTime nextAllowedSwitch = currentUser.getNextAllowedRoleSwitchDate();
+        boolean canSwitch = currentUser.canSwitchRole();
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
         return ResponseEntity.ok(Map.of(
                 "activeRole", currentUser.getActiveRole(),
                 "userId", currentUser.getId(),
                 "email", currentUser.getEmail(),
-                "name", currentUser.getName()
+                "name", currentUser.getName(),
+                "canSwitchRole", canSwitch,
+                "nextAllowedRoleSwitchDate", nextAllowedSwitch != null ? nextAllowedSwitch.format(formatter) : null,
+                "lastRoleSwitchAt", currentUser.getLastRoleSwitchAt() != null ? currentUser.getLastRoleSwitchAt().format(formatter) : null
         ));
     }
+
 }
