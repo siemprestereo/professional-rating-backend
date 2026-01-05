@@ -1,9 +1,7 @@
 package com.example.waiter_rating.controller;
 
-import com.example.waiter_rating.model.Client;
-import com.example.waiter_rating.model.Professional;
-import com.example.waiter_rating.repository.ClientRepo;
-import com.example.waiter_rating.repository.ProfessionalRepo;
+import com.example.waiter_rating.model.*;
+import com.example.waiter_rating.repository.*;
 import com.example.waiter_rating.service.JwtService;
 import jakarta.servlet.http.HttpServletRequest;
 import net.coobird.thumbnailator.Thumbnails;
@@ -17,6 +15,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -27,6 +26,11 @@ public class AuthController {
     private final ProfessionalRepo professionalRepository;
     private final PasswordEncoder passwordEncoder;
     private final ClientRepo clientRepo;
+    private final CvRepo cvRepo;
+    private final RatingRepo ratingRepo;
+    private final QrTokenRepo qrCodeRepo;
+
+    private final AppUserRepo appUserRepo;
     private final JwtService jwtService;
 
     // Directorio para guardar fotos de perfil
@@ -34,11 +38,15 @@ public class AuthController {
 
     public AuthController(ProfessionalRepo professionalRepository,
                           PasswordEncoder passwordEncoder,
-                          ClientRepo clientRepo,
+                          ClientRepo clientRepo, CvRepo cvRepo, RatingRepo ratingRepo, QrTokenRepo qrCodeRepo, AppUserRepo appUserRepo,
                           JwtService jwtService) {
         this.professionalRepository = professionalRepository;
         this.passwordEncoder = passwordEncoder;
         this.clientRepo = clientRepo;
+        this.cvRepo = cvRepo;
+        this.ratingRepo = ratingRepo;
+        this.qrCodeRepo = qrCodeRepo;
+        this.appUserRepo = appUserRepo;
         this.jwtService = jwtService;
 
         // Crear directorio si no existe
@@ -152,23 +160,66 @@ public class AuthController {
 
     @DeleteMapping("/delete-account/{userId}")
     public ResponseEntity<?> deleteAccount(@PathVariable Long userId, HttpServletRequest request) {
-        // Obtener userId del JWT (guardado por el filtro)
-        Long authenticatedUserId = (Long) request.getAttribute("userId");
+        try {
+            // Obtener userId del JWT (guardado por el filtro)
+            Long authenticatedUserId = (Long) request.getAttribute("userId");
 
-        // Usar el userId autenticado si existe, sino usar el del path
-        Long userToDelete = authenticatedUserId != null ? authenticatedUserId : userId;
+            // Usar el userId autenticado si existe, sino usar el del path
+            Long userToDelete = authenticatedUserId != null ? authenticatedUserId : userId;
 
-        Optional<Professional> professionalOpt = professionalRepository.findById(userToDelete);
+            // Buscar el usuario en app_users
+            Optional<AppUser> userOpt = appUserRepo.findById(userToDelete);
 
-        if (professionalOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", "Profesional no encontrado"));
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "Usuario no encontrado"));
+            }
+
+            AppUser user = userOpt.get();
+
+            // Determinar el tipo de usuario y eliminarlo
+            if (user instanceof Professional) {
+                Professional professional = (Professional) user;
+
+                // Eliminar CV si existe (cascade debería manejarlo, pero por si acaso)
+                if (professional.getCv() != null) {
+                    cvRepo.delete(professional.getCv());
+                }
+
+                // Eliminar ratings recibidos
+                List<Rating> ratings = ratingRepo.findByProfessionalId(userToDelete);
+                ratingRepo.deleteAll(ratings);
+
+                // Eliminar QRs
+                List<QrToken> qrCodes = qrCodeRepo.findByProfessionalId(userToDelete);
+                qrCodeRepo.deleteAll(qrCodes);
+
+                // Eliminar el profesional (esto eliminará también de app_users por herencia)
+                professionalRepository.deleteById(userToDelete);
+
+            } else if (user instanceof Client) {
+                Client client = (Client) user;
+
+                // Eliminar ratings emitidos por el cliente
+                List<Rating> ratingsEmitted = ratingRepo.findByClientId(userToDelete);
+                ratingRepo.deleteAll(ratingsEmitted);
+
+                // Eliminar el cliente (esto eliminará también de app_users por herencia)
+                clientRepo.deleteById(userToDelete);
+
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("error", "Tipo de usuario no reconocido"));
+            }
+
+            return ResponseEntity.ok(Map.of("message", "Cuenta eliminada exitosamente"));
+
+        } catch (Exception e) {
+            System.err.println("Error eliminando cuenta: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al eliminar cuenta: " + e.getMessage()));
         }
-
-        // Eliminar profesional (cascade eliminará CV, ratings, etc.)
-        professionalRepository.deleteById(userToDelete);
-
-        return ResponseEntity.ok(Map.of("message", "Cuenta eliminada exitosamente"));
     }
 
     @GetMapping("/me")

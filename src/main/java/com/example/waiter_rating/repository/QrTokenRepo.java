@@ -6,12 +6,15 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface QrTokenRepo extends JpaRepository<QrToken, Long> {
 
     /** Buscar un QR token por su código */
     Optional<QrToken> findByCode(String code);
+
+    List<QrToken> findByProfessionalId(Long professionalId);
 
     /** Contar QR tokens activos de un professional */
     long countByProfessionalIdAndActiveTrue(Long professionalId);

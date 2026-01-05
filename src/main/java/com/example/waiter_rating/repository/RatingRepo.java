@@ -21,6 +21,8 @@ public interface RatingRepo extends JpaRepository<Rating, Long> {
     // Cantidad total de calificaciones de un professional
     long countByProfessionalId(Long professionalId);
 
+    List<Rating> findByClientId(Long clientId);
+
     // Todas las calificaciones dadas por un cliente
     List<Rating> findByClientIdOrderByCreatedAtDesc(Long clientId);
 
