@@ -272,4 +272,32 @@ public class CvController {
         item.setReferenceContact(wh.getReferenceContact());
         return item;
     }
+
+    /**
+     * Obtener CV completo para edición (incluye ID del CV)
+     */
+    @GetMapping("/me/full")
+    public ResponseEntity<?> getMyFullCv(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        String userType = (String) request.getAttribute("userType");
+
+        if (userId == null || !"PROFESSIONAL".equals(userType)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Solo los professionals pueden acceder a su CV"));
+        }
+
+        Cv cv = cvService.getOrCreateForProfessional(userId);
+
+        // Devolver el CV completo con su ID y todas las relaciones
+        return ResponseEntity.ok(Map.of(
+                "id", cv.getId(),
+                "professionalId", cv.getProfessional().getId(),
+                "description", cv.getDescription() != null ? cv.getDescription() : "",
+                "workExperiences", cv.getProfessional().getWorkHistory() != null
+                        ? cv.getProfessional().getWorkHistory()
+                        : List.of(),
+                "education", List.of(), // Si tienes education, agrégalo aquí
+                "certifications", List.of() // Si tienes certifications, agrégalo aquí
+        ));
+    }
 }
