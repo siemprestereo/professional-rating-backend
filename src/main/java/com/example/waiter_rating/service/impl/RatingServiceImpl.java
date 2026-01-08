@@ -8,6 +8,7 @@ import com.example.waiter_rating.repository.QrTokenRepo;
 import com.example.waiter_rating.repository.RatingRepo;
 import com.example.waiter_rating.repository.BusinessRepo;
 import com.example.waiter_rating.repository.ProfessionalRepo;
+import com.example.waiter_rating.repository.WorkHistoryRepo;
 import com.example.waiter_rating.service.RatingService;
 import jakarta.validation.Valid;
 import org.springframework.stereotype.Service;
@@ -30,17 +31,19 @@ public class RatingServiceImpl implements RatingService {
     private final ProfessionalRepo professionalRepo;
     private final BusinessRepo businessRepo;
     private final QrTokenRepo qrTokenRepo;
+    private final WorkHistoryRepo workHistoryRepo;
 
     public RatingServiceImpl(RatingRepo ratingRepo,
                              ClientRepo clientRepo,
                              ProfessionalRepo professionalRepo,
                              BusinessRepo businessRepo,
-                             QrTokenRepo qrTokenRepo) {
+                             QrTokenRepo qrTokenRepo, WorkHistoryRepo workHistoryRepo) {
         this.ratingRepo = ratingRepo;
         this.clientRepo = clientRepo;
         this.professionalRepo = professionalRepo;
         this.businessRepo = businessRepo;
         this.qrTokenRepo = qrTokenRepo;
+        this.workHistoryRepo = workHistoryRepo;
     }
 
     // =========================================================
@@ -49,29 +52,47 @@ public class RatingServiceImpl implements RatingService {
     @Override
     @Transactional
     public Rating submitRating(RatingRequest request) {
-        if (request.getProfessionalId() == null || request.getBusinessId() == null) {
-            throw new IllegalArgumentException("professionalId y businessId son obligatorios para submitRating");
+        // Validar que tenemos lo mínimo necesario
+        if (request.getProfessionalId() == null) {
+            throw new IllegalArgumentException("professionalId es obligatorio");
         }
 
+        if (request.getWorkHistoryId() == null) {
+            throw new IllegalArgumentException("workHistoryId es obligatorio");
+        }
+
+        // Buscar el professional
         Professional professional = professionalRepo.findById(request.getProfessionalId())
                 .orElseThrow(() -> new IllegalArgumentException("Professional no encontrado: " + request.getProfessionalId()));
 
-        Business business = businessRepo.findById(request.getBusinessId())
-                .orElseThrow(() -> new IllegalArgumentException("Business no encontrado: " + request.getBusinessId()));
+        // Buscar el WorkHistory específico
+        WorkHistory workHistory = workHistoryRepo.findById(request.getWorkHistoryId())
+                .orElseThrow(() -> new IllegalArgumentException("WorkHistory no encontrado: " + request.getWorkHistoryId()));
 
+        // Verificar que el WorkHistory pertenece al professional
+        if (!workHistory.getProfessional().getId().equals(professional.getId())) {
+            throw new IllegalArgumentException("El WorkHistory no pertenece a este Professional");
+        }
+
+        // Obtener el Business desde el WorkHistory
+        Business business = workHistory.getBusiness();
+
+        // Buscar el cliente (viene del usuario autenticado)
         Client client = null;
         if (request.getClientId() != null) {
             client = clientRepo.findById(request.getClientId())
                     .orElseThrow(() -> new IllegalArgumentException("Cliente no encontrado: " + request.getClientId()));
         }
 
+        // Crear el rating
         Rating rating = Rating.builder()
                 .professional(professional)
                 .business(business)
+                .workHistory(workHistory) // ← NUEVO: asociar el workplace específico
                 .client(client)
                 .score(request.getScore())
                 .comment(request.getComment())
-                .serviceDate(LocalDateTime.now()) // Fecha del servicio
+                .serviceDate(LocalDateTime.now())
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
