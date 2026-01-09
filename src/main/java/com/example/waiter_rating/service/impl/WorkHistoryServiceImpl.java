@@ -49,23 +49,19 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
             validateMonthlyWorkplaceChanges(professional);
         }
 
-        // Obtener o crear Business
+        // Crear Business (siempre nuevo, sin búsqueda ni reutilización)
         Business business;
         if (request.getBusinessId() != null) {
-            // Si viene businessId, usarlo
+            // Si viene businessId, usarlo (caso poco común)
             business = businessRepo.findById(request.getBusinessId())
                     .orElseThrow(() -> new IllegalArgumentException("Business no encontrado: " + request.getBusinessId()));
         } else {
-            // Si NO viene businessId, crear Business automáticamente con el nombre
-            // Buscar si ya existe uno con ese nombre (case-insensitive)
-            business = businessRepo.findByNameIgnoreCase(request.getBusinessName())
-                    .orElseGet(() -> {
-                        Business newBusiness = Business.builder()
-                                .name(request.getBusinessName())
-                                .businessType(BusinessType.RESTAURANT) // Default
-                                .build();
-                        return businessRepo.save(newBusiness);
-                    });
+            // Siempre crear un nuevo Business con el nombre ingresado
+            business = Business.builder()
+                    .name(request.getBusinessName())
+                    .businessType(BusinessType.RESTAURANT) // Default
+                    .build();
+            business = businessRepo.save(business);
         }
 
         WorkHistory workHistory = WorkHistory.builder()
@@ -117,21 +113,18 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
             professionalRepo.save(professional);
         }
 
-        // Actualizar business
+        // Actualizar business (siempre crear nuevo, sin búsqueda)
         Business business;
         if (request.getBusinessId() != null) {
             business = businessRepo.findById(request.getBusinessId())
                     .orElseThrow(() -> new IllegalArgumentException("Business no encontrado: " + request.getBusinessId()));
         } else {
-            // Buscar o crear Business por nombre
-            business = businessRepo.findByNameIgnoreCase(request.getBusinessName())
-                    .orElseGet(() -> {
-                        Business newBusiness = Business.builder()
-                                .name(request.getBusinessName())
-                                .businessType(BusinessType.RESTAURANT)
-                                .build();
-                        return businessRepo.save(newBusiness);
-                    });
+            // Siempre crear un nuevo Business con el nombre ingresado
+            business = Business.builder()
+                    .name(request.getBusinessName())
+                    .businessType(BusinessType.RESTAURANT)
+                    .build();
+            business = businessRepo.save(business);
         }
 
         workHistory.setBusiness(business);
