@@ -13,7 +13,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class WorkHistoryServiceImpl implements WorkHistoryService {
@@ -48,10 +50,25 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
             validateMonthlyWorkplaceChanges(professional);
         }
 
-        Business business = null;
+        // Obtener o crear Business
+        Business business;
         if (request.getBusinessId() != null) {
+            // Si viene businessId, usarlo
             business = businessRepo.findById(request.getBusinessId())
                     .orElseThrow(() -> new IllegalArgumentException("Business no encontrado: " + request.getBusinessId()));
+        } else {
+            // Si NO viene businessId, crear Business automáticamente con el nombre
+            // Buscar si ya existe uno con ese nombre (case-insensitive)
+            business = businessRepo.findByNameIgnoreCase(request.getBusinessName())
+                    .orElseGet(() -> {
+                        Business newBusiness = Business.builder()
+                                .name(request.getBusinessName())
+                                .businessType(BusinessType.RESTAURANT) // Default
+                                .createdAt(LocalDateTime.now())
+                                .updatedAt(LocalDateTime.now())
+                                .build();
+                        return businessRepo.save(newBusiness);
+                    });
         }
 
         WorkHistory workHistory = WorkHistory.builder()
@@ -63,6 +80,7 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
                 .endDate(request.getEndDate())
                 .isActive(isActiveJob)
                 .referenceContact(request.getReferenceContact())
+                .description(request.getDescription())
                 .build();
 
         workHistory = workHistoryRepo.save(workHistory);
@@ -102,19 +120,33 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
             professionalRepo.save(professional);
         }
 
-        // Actualizar business si cambió
+        // Actualizar business
+        Business business;
         if (request.getBusinessId() != null) {
-            Business business = businessRepo.findById(request.getBusinessId())
+            business = businessRepo.findById(request.getBusinessId())
                     .orElseThrow(() -> new IllegalArgumentException("Business no encontrado: " + request.getBusinessId()));
-            workHistory.setBusiness(business);
+        } else {
+            // Buscar o crear Business por nombre
+            business = businessRepo.findByNameIgnoreCase(request.getBusinessName())
+                    .orElseGet(() -> {
+                        Business newBusiness = Business.builder()
+                                .name(request.getBusinessName())
+                                .businessType(BusinessType.RESTAURANT)
+                                .createdAt(LocalDateTime.now())
+                                .updatedAt(LocalDateTime.now())
+                                .build();
+                        return businessRepo.save(newBusiness);
+                    });
         }
 
+        workHistory.setBusiness(business);
         workHistory.setBusinessName(request.getBusinessName());
         workHistory.setPosition(request.getPosition());
         workHistory.setStartDate(request.getStartDate());
         workHistory.setEndDate(request.getEndDate());
         workHistory.setIsActive(willBeActive);
         workHistory.setReferenceContact(request.getReferenceContact());
+        workHistory.setDescription(request.getDescription());
 
         return workHistoryRepo.save(workHistory);
     }
@@ -167,31 +199,61 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
                 .orElseThrow(() -> new IllegalArgumentException("Professional no encontrado: " + professionalId));
 
         // Verificar si ya tiene freelance activo
-        boolean hasFreelance = workHistoryRepo.findByProfessionalIdAndIsActiveTrue(professionalId)
+        Optional<WorkHistory> existingFreelance = workHistoryRepo.findByProfessionalIdAndIsActiveTrue(professionalId)
                 .stream()
-                .anyMatch(wh -> wh.getBusiness() != null && wh.getBusiness().getBusinessType() == BusinessType.FREELANCE);
+                .filter(wh -> wh.getBusiness() != null && wh.getBusiness().getBusinessType() == BusinessType.FREELANCE)
+                .findFirst();
 
-        if (hasFreelance) {
-            throw new IllegalStateException("El professional ya tiene un trabajo freelance activo");
+        if (existingFreelance.isPresent()) {
+            throw new IllegalStateException("El professional ya tiene trabajo independiente activo");
         }
 
-        // Crear Business personal
-        Business freelanceBusiness = Business.builder()
-                .name(professional.getName() + " - Independiente")
-                .businessType(BusinessType.FREELANCE)
-                .build();
-        freelanceBusiness = businessRepo.save(freelanceBusiness);
+        // Crear o buscar Business de tipo FREELANCE para este profesional
+        String freelanceName = professional.getName() + " - Independiente";
+        Business freelanceBusiness = businessRepo.findByNameIgnoreCase(freelanceName)
+                .orElseGet(() -> {
+                    Business newBusiness = Business.builder()
+                            .name(freelanceName)
+                            .businessType(BusinessType.FREELANCE)
+                            .createdAt(LocalDateTime.now())
+                            .updatedAt(LocalDateTime.now())
+                            .build();
+                    return businessRepo.save(newBusiness);
+                });
 
         // Crear WorkHistory
         WorkHistory workHistory = WorkHistory.builder()
                 .professional(professional)
                 .business(freelanceBusiness)
-                .position("Independiente")
+                .businessName("Independiente")
+                .position("Trabajo Autónomo")
                 .startDate(LocalDate.now())
                 .isActive(true)
                 .build();
 
         return workHistoryRepo.save(workHistory);
+    }
+
+    @Override
+    @Transactional
+    public void disableFreelanceWork(Long professionalId) {
+        Professional professional = professionalRepo.findById(professionalId)
+                .orElseThrow(() -> new IllegalArgumentException("Professional no encontrado: " + professionalId));
+
+        // Buscar el WorkHistory freelance activo
+        Optional<WorkHistory> freelanceWork = workHistoryRepo.findByProfessionalIdAndIsActiveTrue(professionalId)
+                .stream()
+                .filter(wh -> wh.getBusiness() != null && wh.getBusiness().getBusinessType() == BusinessType.FREELANCE)
+                .findFirst();
+
+        if (freelanceWork.isEmpty()) {
+            throw new IllegalStateException("No se encontró trabajo independiente activo para desactivar");
+        }
+
+        // Cerrar el trabajo freelance
+        WorkHistory work = freelanceWork.get();
+        work.closeJob(LocalDate.now());
+        workHistoryRepo.save(work);
     }
 
     /**
