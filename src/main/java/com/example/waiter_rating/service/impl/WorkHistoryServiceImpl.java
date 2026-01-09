@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -64,8 +63,6 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
                         Business newBusiness = Business.builder()
                                 .name(request.getBusinessName())
                                 .businessType(BusinessType.RESTAURANT) // Default
-                                .createdAt(LocalDateTime.now())
-                                .updatedAt(LocalDateTime.now())
                                 .build();
                         return businessRepo.save(newBusiness);
                     });
@@ -132,8 +129,6 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
                         Business newBusiness = Business.builder()
                                 .name(request.getBusinessName())
                                 .businessType(BusinessType.RESTAURANT)
-                                .createdAt(LocalDateTime.now())
-                                .updatedAt(LocalDateTime.now())
                                 .build();
                         return businessRepo.save(newBusiness);
                     });
@@ -215,8 +210,6 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
                     Business newBusiness = Business.builder()
                             .name(freelanceName)
                             .businessType(BusinessType.FREELANCE)
-                            .createdAt(LocalDateTime.now())
-                            .updatedAt(LocalDateTime.now())
                             .build();
                     return businessRepo.save(newBusiness);
                 });
