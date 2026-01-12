@@ -189,7 +189,7 @@ public class RatingServiceImpl implements RatingService {
             if (LocalDateTime.now().isBefore(nextAllowedDate)) {
                 String formattedDate = nextAllowedDate.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
                 throw new IllegalStateException(
-                        "Ya calificaste a este profesional. Podrás volver a calificarlo a partir del " + formattedDate
+                        "Aún no han transcurrido 6 meses desde tu última calificación. Podrás volver a calificar a partir del " + formattedDate
                 );
             }
         }
