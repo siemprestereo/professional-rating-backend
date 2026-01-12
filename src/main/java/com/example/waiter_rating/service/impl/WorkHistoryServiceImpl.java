@@ -72,6 +72,7 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
                 .isActive(isActiveJob)
+                .isFreelance(request.getIsFreelance() != null ? request.getIsFreelance() : false) // ← AGREGAR ESTA LÍNEA
                 .referenceContact(request.getReferenceContact())
                 .description(request.getDescription())
                 .build();
@@ -133,6 +134,7 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
         workHistory.setStartDate(request.getStartDate());
         workHistory.setEndDate(request.getEndDate());
         workHistory.setIsActive(willBeActive);
+        workHistory.setIsFreelance(request.getIsFreelance() != null ? request.getIsFreelance() : false); // ← AGREGAR ESTA LÍNEA
         workHistory.setReferenceContact(request.getReferenceContact());
         workHistory.setDescription(request.getDescription());
 
@@ -215,6 +217,7 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
                 .position("Trabajo Autónomo")
                 .startDate(LocalDate.now())
                 .isActive(true)
+                .isFreelance(true)
                 .build();
 
         return workHistoryRepo.save(workHistory);
