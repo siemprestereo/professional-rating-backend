@@ -18,4 +18,6 @@ public class CvPublicResponse {
     private Integer totalRatings;
 
     private List<CvExperienceItem> workHistory;
+    private List<EducationResponse> education;
+    private List<CertificationResponse> certifications;
 }

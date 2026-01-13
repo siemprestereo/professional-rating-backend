@@ -4,6 +4,8 @@ import com.example.waiter_rating.dto.request.CvDescriptionRequest;
 import com.example.waiter_rating.dto.request.WorkHistoryRequest;
 import com.example.waiter_rating.dto.response.CvExperienceItem;
 import com.example.waiter_rating.dto.response.CvPublicResponse;
+import com.example.waiter_rating.dto.response.CertificationResponse;
+import com.example.waiter_rating.dto.response.EducationResponse;
 import com.example.waiter_rating.model.*;
 import com.example.waiter_rating.service.*;
 import jakarta.servlet.http.HttpServletRequest;
@@ -393,10 +395,14 @@ public class CvController {
         dto.setReputationScore(cv.getReputationScore() != null ? cv.getReputationScore().doubleValue() : 0.0);
         dto.setTotalRatings(cv.getTotalRatings());
 
-        // El historial laboral ahora se obtiene del Professional, no del CV
+        // Historial laboral
         dto.setWorkHistory(p.getWorkHistory() != null
                 ? p.getWorkHistory().stream().map(this::toItem).toList()
                 : List.of());
+
+        // ← AGREGAR ESTAS DOS LÍNEAS:
+        dto.setEducation(educationService.getEducationByProfessional(p.getId()));
+        dto.setCertifications(certificationService.getCertificationsByProfessional(p.getId()));
 
         return dto;
     }
