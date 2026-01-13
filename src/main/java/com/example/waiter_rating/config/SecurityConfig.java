@@ -62,11 +62,14 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/qr/resolve/{code}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/qr/dynamic").permitAll()
 
-                        // Ver ratings públicos de un mesero
+                        // Ver los ratings públicos de un mesero
                         .requestMatchers(HttpMethod.GET, "/api/ratings/professional/**").permitAll()
 
                         // Ver ratings públicos por workHistoryId (para CV compartido)
                         .requestMatchers(HttpMethod.GET, "/api/ratings/work-history/**").permitAll()
+
+                        // Ver estadísticas públicas de un profesional
+                        .requestMatchers(HttpMethod.GET, "/api/stats/professional/**").permitAll()
 
                         // Ver CV público
                         .requestMatchers(HttpMethod.GET, "/api/cv/professional/**").permitAll()
