@@ -65,6 +65,9 @@ public class SecurityConfig {
                         // Ver ratings públicos de un mesero
                         .requestMatchers(HttpMethod.GET, "/api/ratings/professional/**").permitAll()
 
+                        // Ver ratings públicos por workHistoryId (para CV compartido)
+                        .requestMatchers(HttpMethod.GET, "/api/ratings/work-history/**").permitAll()
+
                         // Ver CV público
                         .requestMatchers(HttpMethod.GET, "/api/cv/professional/**").permitAll()
 
