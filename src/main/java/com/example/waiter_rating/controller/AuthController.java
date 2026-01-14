@@ -334,6 +334,19 @@ public class AuthController {
         if (updates.containsKey("professionalTitle")) {
             professional.setProfessionalTitle(updates.get("professionalTitle"));
         }
+        // ← AGREGAR ESTA SECCIÓN:
+        if (updates.containsKey("professionType")) {
+            String profType = updates.get("professionType");
+            if (profType != null && !profType.isEmpty()) {
+                try {
+                    ProfessionType professionType = ProfessionType.valueOf(profType);
+                    professional.setProfessionType(professionType);
+                } catch (IllegalArgumentException e) {
+                    return ResponseEntity.badRequest()
+                            .body(Map.of("error", "Tipo de profesión inválido: " + profType));
+                }
+            }
+        }
 
         professionalRepository.save(professional);
 
@@ -341,7 +354,8 @@ public class AuthController {
                 "message", "Perfil actualizado correctamente",
                 "phone", professional.getPhone() != null ? professional.getPhone() : "",
                 "location", professional.getLocation() != null ? professional.getLocation() : "",
-                "professionalTitle", professional.getProfessionalTitle() != null ? professional.getProfessionalTitle() : ""
+                "professionalTitle", professional.getProfessionalTitle() != null ? professional.getProfessionalTitle() : "",
+                "professionType", professional.getProfessionType() != null ? professional.getProfessionType().name() : ""  // ← AGREGAR ESTA LÍNEA
         ));
     }
 
