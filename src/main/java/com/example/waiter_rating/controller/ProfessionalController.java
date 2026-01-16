@@ -96,7 +96,7 @@ public class ProfessionalController {
 
     // Agregar este endpoint al ProfessionalController.java
 
-    @PutMapping("/api/professionals/toggle-searchable")
+    @PutMapping("/toggle-searchable")
     public ResponseEntity<?> toggleSearchable(@AuthenticationPrincipal UserDetails userDetails) {
         try {
             String email = userDetails.getUsername();
@@ -132,7 +132,7 @@ public class ProfessionalController {
     }
 
     // También agregar un endpoint GET para obtener el estado actual
-    @GetMapping("/api/professionals/searchable-status")
+    @GetMapping("/searchable-status")
     public ResponseEntity<?> getSearchableStatus(@AuthenticationPrincipal UserDetails userDetails) {
         try {
             String email = userDetails.getUsername();
