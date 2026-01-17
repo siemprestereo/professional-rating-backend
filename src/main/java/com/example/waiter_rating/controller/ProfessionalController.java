@@ -9,9 +9,9 @@ import com.example.waiter_rating.service.ProfessionalService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import java.util.List;
 import java.util.Map;
@@ -96,10 +96,52 @@ public class ProfessionalController {
 
     // Agregar este endpoint al ProfessionalController.java
 
-    @PutMapping("/toggle-searchable")
-    public ResponseEntity<?> toggleSearchable(@AuthenticationPrincipal UserDetails userDetails) {
+    @GetMapping("/searchable-status")
+    public ResponseEntity<?> getSearchableStatus() {
         try {
-            String email = userDetails.getUsername();
+            // Obtener email del SecurityContext
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+            if (authentication == null || authentication.getPrincipal() == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "No autenticado"));
+            }
+
+            String email = authentication.getPrincipal().toString();
+            System.out.println("✅ Email obtenido: " + email);
+
+            Optional<Professional> professionalOpt = professionalRepo.findByEmail(email);
+
+            if (professionalOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "Profesional no encontrado"));
+            }
+
+            Professional professional = professionalOpt.get();
+            Boolean searchable = professional.getSearchable();
+
+            return ResponseEntity.ok(Map.of("searchable", searchable != null ? searchable : false));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al obtener estado: " + e.getMessage()));
+        }
+    }
+
+    @PutMapping("/toggle-searchable")
+    public ResponseEntity<?> toggleSearchable() {
+        try {
+            // Obtener email del SecurityContext
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+            if (authentication == null || authentication.getPrincipal() == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "No autenticado"));
+            }
+
+            String email = authentication.getPrincipal().toString();
+            System.out.println("✅ Email obtenido: " + email);
 
             Optional<Professional> professionalOpt = professionalRepo.findByEmail(email);
 
@@ -110,7 +152,6 @@ public class ProfessionalController {
 
             Professional professional = professionalOpt.get();
 
-            // ✅ Manejar NULL correctamente
             Boolean currentValue = professional.getSearchable();
             Boolean newValue = (currentValue == null || !currentValue) ? true : false;
             professional.setSearchable(newValue);
@@ -125,33 +166,9 @@ public class ProfessionalController {
             ));
 
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Error al actualizar configuración: " + e.getMessage()));
-        }
-    }
-
-    // También agregar un endpoint GET para obtener el estado actual
-    @GetMapping("/searchable-status")
-    public ResponseEntity<?> getSearchableStatus(@AuthenticationPrincipal UserDetails userDetails) {
-        try {
-            String email = userDetails.getUsername();
-
-            Optional<Professional> professionalOpt = professionalRepo.findByEmail(email);
-
-            if (professionalOpt.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(Map.of("error", "Profesional no encontrado"));
-            }
-
-            Professional professional = professionalOpt.get();
-
-            // ✅ Devolver false si es NULL
-            Boolean searchable = professional.getSearchable();
-            return ResponseEntity.ok(Map.of("searchable", searchable != null ? searchable : false));
-
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Error al obtener estado: " + e.getMessage()));
         }
     }
 }
