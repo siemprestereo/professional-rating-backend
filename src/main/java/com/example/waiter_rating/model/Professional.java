@@ -19,7 +19,7 @@ public class Professional extends AppUser {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "profession_type", nullable = false)
-    private ProfessionType professionType = ProfessionType.WAITER;
+    private ProfessionType professionType;
 
     @Column(name = "reputation_score")
     @Builder.Default  // ← AGREGAR ESTO

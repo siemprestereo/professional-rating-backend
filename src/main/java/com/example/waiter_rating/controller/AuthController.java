@@ -62,9 +62,12 @@ public class AuthController {
         String email = request.get("email");
         String password = request.get("password");
         String name = request.get("name");
+        String professionType = request.get("professionType");
+        String professionalTitle = request.get("professionalTitle");
 
-        if (email == null || password == null || name == null) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Email, password y nombre son requeridos"));
+        // ✅ Validación: professionType es obligatorio
+        if (email == null || password == null || name == null || professionType == null || professionType.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Email, password, nombre y tipo de profesión son requeridos"));
         }
 
         if (professionalRepository.findByEmail(email).isPresent()) {
@@ -76,6 +79,18 @@ public class AuthController {
         professional.setName(name);
         professional.setEmail(email);
         professional.setPassword(passwordEncoder.encode(password));
+
+        // ✅ Guardar professionType (obligatorio con validación)
+        try {
+            professional.setProfessionType(ProfessionType.valueOf(professionType));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Tipo de profesión inválido: " + professionType));
+        }
+
+        // ✅ Guardar professionalTitle (opcional)
+        if (professionalTitle != null && !professionalTitle.isEmpty()) {
+            professional.setProfessionalTitle(professionalTitle);
+        }
 
         professionalRepository.save(professional);
 
