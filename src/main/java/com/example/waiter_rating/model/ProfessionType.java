@@ -13,6 +13,14 @@ public enum ProfessionType {
     BARTENDER("Bartender"),
     CONSTRUCTION_WORKER("Obrero de Construcción"),
     GARDENER("Jardinero/a"),
+
+    BARISTA("Barista"),
+
+    DRIVER("Conductor"),
+    SECURITY("Personal de seguridad"),
+    RECEPTIONIST("Recepcionista"),
+
+
     AIR_CONDITIONING_TECHNICIAN("Instalador de A.A"),
     OTHER("Otro");
 
