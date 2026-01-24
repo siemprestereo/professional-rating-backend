@@ -23,4 +23,6 @@ public interface CvService {
 
     /** Elimina un CV */
     void delete(Long cvId);
+
+    Cv getCvById(Long cvId);
 }

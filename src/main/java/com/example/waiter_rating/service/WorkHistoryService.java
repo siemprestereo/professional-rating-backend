@@ -29,4 +29,7 @@ public interface WorkHistoryService {
     /** Habilitar trabajo freelance para un professional */
     WorkHistory enableFreelanceWork(Long professionalId);
     void disableFreelanceWork(Long professionalId);
+
+    long countActiveJobsByProfessional(Long professionalId);
+    WorkHistory getById(Long workHistoryId);
 }

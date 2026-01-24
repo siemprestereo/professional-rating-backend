@@ -300,4 +300,18 @@ public class WorkHistoryServiceImpl implements WorkHistoryService {
             );
         }
     }
+
+    @Override
+    public long countActiveJobsByProfessional(Long professionalId) {
+        return workHistoryRepo.findByProfessionalId(professionalId)
+                .stream()
+                .filter(wh -> wh.getIsActive() != null && wh.getIsActive())
+                .count();
+    }
+
+    @Override
+    public WorkHistory getById(Long workHistoryId) {
+        return workHistoryRepo.findById(workHistoryId)
+                .orElseThrow(() -> new RuntimeException("WorkHistory no encontrado con ID: " + workHistoryId));
+    }
 }

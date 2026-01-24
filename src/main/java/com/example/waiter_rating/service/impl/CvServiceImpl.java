@@ -116,4 +116,10 @@ public class CvServiceImpl implements CvService {
             cv.setTotalRatings(ratings.size());
         }
     }
+
+    @Override
+    public Cv getCvById(Long cvId) {
+        return cvRepo.findById(cvId)
+                .orElseThrow(() -> new RuntimeException("CV no encontrado con ID: " + cvId));
+    }
 }

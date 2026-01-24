@@ -27,12 +27,12 @@ public class CvController {
     private final PdfService pdfService;
     private final EducationService educationService;
     private final CertificationService certificationService;
-
     private final RatingRepo ratingRepo;
 
     public CvController(CvService cvService, WorkHistoryService workHistoryService,
                         AuthService authService, PdfService pdfService,
-                        EducationService educationService, CertificationService certificationService, RatingRepo ratingRepo) {
+                        EducationService educationService, CertificationService certificationService,
+                        RatingRepo ratingRepo) {
         this.cvService = cvService;
         this.workHistoryService = workHistoryService;
         this.authService = authService;
@@ -110,8 +110,130 @@ public class CvController {
         return ResponseEntity.ok(toPublicResponse(refreshed));
     }
 
+    // ========== NUEVOS ENDPOINTS - GUARDAR EXPERIENCIAS INDIVIDUALES ==========
+
+    /**
+     * Agregar o actualizar UNA SOLA experiencia laboral
+     * POST /api/cv/{cvId}/work-experience
+     */
+    @PostMapping("/{cvId}/work-experience")
+    public ResponseEntity<?> addOrUpdateWorkExperience(
+            @PathVariable Long cvId,
+            @RequestBody WorkHistoryRequest workExperience,
+            HttpServletRequest request) {
+
+        try {
+            Long userId = (Long) request.getAttribute("userId");
+            String userType = (String) request.getAttribute("userType");
+
+            if (userId == null || !"PROFESSIONAL".equals(userType)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "Solo los professionals pueden editar su CV"));
+            }
+
+            // Validar que el CV pertenece al usuario
+            Cv cv = cvService.getCvById(cvId);
+            if (!cv.getProfessional().getId().equals(userId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", "No tienes permiso para editar este CV"));
+            }
+
+            // Validar máximo 3 trabajos activos
+            if (workExperience.getIsActive() != null && workExperience.getIsActive()) {
+                long activeJobsCount = workHistoryService.countActiveJobsByProfessional(userId);
+
+                // Si está editando un trabajo existente que ya estaba activo, no contar ese
+                if (workExperience.getBusinessId() != null) {
+                    WorkHistory existing = workHistoryService.getById(workExperience.getBusinessId());
+                    if (existing != null && existing.getIsActive()) {
+                        activeJobsCount--; // No contar el que estamos editando
+                    }
+                }
+
+                if (activeJobsCount >= 3) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body(Map.of("error", "Ya tienes 3 trabajos activos. Desactiva uno para agregar otro."));
+                }
+            }
+
+            // Validar que tiene al menos position
+            if (workExperience.getPosition() == null || workExperience.getPosition().isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("error", "El puesto es obligatorio"));
+            }
+
+            // Determinar si es crear o actualizar basándose en si viene businessId
+            WorkHistory savedWork;
+            Long workHistoryId = workExperience.getBusinessId(); // Asumo que usas businessId como identificador
+
+            if (workHistoryId != null) {
+                // Actualizar existente
+                System.out.println("✏️ Actualizando work history ID: " + workHistoryId);
+                savedWork = workHistoryService.updateWorkHistory(userId, workHistoryId, workExperience);
+            } else {
+                // Crear nuevo
+                System.out.println("➕ Creando nueva work history: " + workExperience.getPosition());
+                savedWork = workHistoryService.addWorkHistory(userId, workExperience);
+            }
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Experiencia laboral guardada correctamente",
+                    "workHistoryId", savedWork.getId(),
+                    "isActive", savedWork.getIsActive()
+            ));
+
+        } catch (Exception e) {
+            System.err.println("❌ Error guardando experiencia laboral: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al guardar: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Eliminar UNA experiencia laboral
+     * DELETE /api/cv/{cvId}/work-experience/{workHistoryId}
+     */
+    @DeleteMapping("/{cvId}/work-experience/{workHistoryId}")
+    public ResponseEntity<?> deleteWorkExperience(
+            @PathVariable Long cvId,
+            @PathVariable Long workHistoryId,
+            HttpServletRequest request) {
+
+        try {
+            Long userId = (Long) request.getAttribute("userId");
+            String userType = (String) request.getAttribute("userType");
+
+            if (userId == null || !"PROFESSIONAL".equals(userType)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "Solo los professionals pueden editar su CV"));
+            }
+
+            // Validar que el CV pertenece al usuario
+            Cv cv = cvService.getCvById(cvId);
+            if (!cv.getProfessional().getId().equals(userId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", "No tienes permiso para editar este CV"));
+            }
+
+            workHistoryService.deleteWorkHistory(userId, workHistoryId);
+
+            return ResponseEntity.ok(Map.of("message", "Experiencia laboral eliminada correctamente"));
+
+        } catch (Exception e) {
+            System.err.println("❌ Error eliminando experiencia laboral: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al eliminar: " + e.getMessage()));
+        }
+    }
+
+    // ========== ENDPOINT ORIGINAL - ACTUALIZAR CV COMPLETO ==========
+
     /**
      * Actualizar CV completo (workExperiences, education, certifications)
+     * NOTA: Este endpoint ahora se usará principalmente para descripción, educación y certificaciones
+     * Las experiencias laborales se guardan individualmente con los endpoints nuevos
      */
     @PutMapping("/{cvId}")
     public ResponseEntity<?> updateFullCv(
@@ -144,7 +266,7 @@ public class CvController {
                 System.out.println("✏️ Descripción actualizada: " + description);
             }
 
-            // 1. Actualizar work experiences
+            // 1. Actualizar work experiences (mantenido por compatibilidad)
             List<Map<String, Object>> workExperiences = (List<Map<String, Object>>) updates.get("workExperiences");
             if (workExperiences != null) {
                 System.out.println("💼 Procesando " + workExperiences.size() + " experiencias laborales");
@@ -174,8 +296,6 @@ public class CvController {
                         System.out.println("  ✏️ Actualizando work history ID: " + workHistoryId);
                         workHistoryService.updateWorkHistory(userId, workHistoryId, req);
                     } else if (req.getPosition() != null && !req.getPosition().isEmpty()) {
-                        // Validar position en vez de businessName
-                        // Los freelance pueden tener businessName vacío pero SIEMPRE deben tener position
                         System.out.println("  ➕ Creando nueva work history: " + req.getPosition() +
                                 (req.getIsFreelance() ? " (Freelance)" : ""));
                         workHistoryService.addWorkHistory(userId, req);
@@ -247,6 +367,8 @@ public class CvController {
                     .body(Map.of("error", "Error al actualizar CV: " + e.getMessage()));
         }
     }
+
+    // ========== OTROS ENDPOINTS ORIGINALES ==========
 
     /**
      * Listar MI historial laboral
@@ -444,11 +566,9 @@ public class CvController {
         item.setIsFreelance(wh.getIsFreelance() != null ? wh.getIsFreelance() : false);
         item.setReferenceContact(wh.getReferenceContact());
 
-        // ✅ AGREGAR ESTO:
         long ratingCount = ratingRepo.countByWorkHistoryId(wh.getId());
         item.setTotalRatings((int) ratingCount);
 
         return item;
     }
-
 }
