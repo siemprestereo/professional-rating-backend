@@ -334,7 +334,16 @@ public class AuthController {
             if (updates.containsKey("professionalTitle")) p.setProfessionalTitle(updates.get("professionalTitle"));
 
             professionalRepository.save(p);
-            return ResponseEntity.ok(p); // Retornamos el objeto actualizado
+
+            // ← CAMBIAR: Devolver Map en lugar del objeto completo
+            return ResponseEntity.ok(Map.of(
+                    "id", p.getId(),
+                    "name", p.getName(),
+                    "email", p.getEmail(),
+                    "phone", p.getPhone() != null ? p.getPhone() : "",
+                    "location", p.getLocation() != null ? p.getLocation() : "",
+                    "professionalTitle", p.getProfessionalTitle() != null ? p.getProfessionalTitle() : ""
+            ));
         }
 
         // --- LÓGICA PARA CLIENTE ---
@@ -347,7 +356,15 @@ public class AuthController {
             if (updates.containsKey("location")) c.setLocation(updates.get("location"));
 
             clientRepo.save(c);
-            return ResponseEntity.ok(c); // Retornamos el objeto actualizado
+
+            // ← CAMBIAR: Devolver Map en lugar del objeto completo
+            return ResponseEntity.ok(Map.of(
+                    "id", c.getId(),
+                    "name", c.getName(),
+                    "email", c.getEmail(),
+                    "phone", c.getPhone() != null ? c.getPhone() : "",
+                    "location", c.getLocation() != null ? c.getLocation() : ""
+            ));
         }
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Tipo de usuario no válido"));
