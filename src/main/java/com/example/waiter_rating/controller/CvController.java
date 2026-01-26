@@ -228,6 +228,106 @@ public class CvController {
         }
     }
 
+    // ========== ENDPOINTS PARA EDUCACIÓN INDIVIDUAL ==========
+
+    /**
+     * Agregar o actualizar UNA educación
+     * POST /api/cv/{cvId}/education
+     */
+    @PostMapping("/{cvId}/education")
+    public ResponseEntity<?> addOrUpdateEducation(
+            @PathVariable Long cvId,
+            @RequestBody Education education,
+            HttpServletRequest request) {
+
+        try {
+            Long userId = (Long) request.getAttribute("userId");
+            String userType = (String) request.getAttribute("userType");
+
+            if (userId == null || !"PROFESSIONAL".equals(userType)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "Solo los professionals pueden editar su CV"));
+            }
+
+            // Validar que el CV pertenece al usuario
+            Cv cv = cvService.getCvById(cvId);
+            if (!cv.getProfessional().getId().equals(userId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", "No tienes permiso para editar este CV"));
+            }
+
+            // Validar que tenga al menos institución o título
+            if ((education.getInstitution() == null || education.getInstitution().isEmpty()) &&
+                    (education.getDegree() == null || education.getDegree().isEmpty())) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("error", "Debe ingresar al menos la institución o el título"));
+            }
+
+            // Determinar si es crear o actualizar
+            Education savedEducation;
+            Long educationId = education.getId();
+
+            if (educationId != null) {
+                // Actualizar existente
+                System.out.println("✏️ Actualizando educación ID: " + educationId);
+                savedEducation = educationService.updateEducation(userId, educationId, education);
+            } else {
+                // Crear nueva
+                System.out.println("➕ Creando nueva educación: " + education.getDegree());
+                savedEducation = educationService.addEducation(userId, education);
+            }
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Educación guardada correctamente",
+                    "educationId", savedEducation.getId()
+            ));
+
+        } catch (Exception e) {
+            System.err.println("❌ Error guardando educación: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al guardar: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Eliminar UNA educación
+     * DELETE /api/cv/{cvId}/education/{educationId}
+     */
+    @DeleteMapping("/{cvId}/education/{educationId}")
+    public ResponseEntity<?> deleteEducation(
+            @PathVariable Long cvId,
+            @PathVariable Long educationId,
+            HttpServletRequest request) {
+
+        try {
+            Long userId = (Long) request.getAttribute("userId");
+            String userType = (String) request.getAttribute("userType");
+
+            if (userId == null || !"PROFESSIONAL".equals(userType)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "Solo los professionals pueden editar su CV"));
+            }
+
+            // Validar que el CV pertenece al usuario
+            Cv cv = cvService.getCvById(cvId);
+            if (!cv.getProfessional().getId().equals(userId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", "No tienes permiso para editar este CV"));
+            }
+
+            educationService.deleteEducation(userId, educationId);
+
+            return ResponseEntity.ok(Map.of("message", "Educación eliminada correctamente"));
+
+        } catch (Exception e) {
+            System.err.println("❌ Error eliminando educación: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al eliminar: " + e.getMessage()));
+        }
+    }
+
     // ========== ENDPOINT ORIGINAL - ACTUALIZAR CV COMPLETO ==========
 
     /**
