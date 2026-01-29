@@ -45,16 +45,28 @@ public class AppUserServiceImpl implements AppUserService {
     @Override
     public Map<String, Object> checkUserRoles(String authHeader) {
         try {
+            System.out.println("=== checkUserRoles START ===");
+            System.out.println("authHeader: " + authHeader);
+
             // Extraer token
             String token = authHeader.substring(7); // Quitar "Bearer "
+            System.out.println("Token extraído: " + token.substring(0, Math.min(20, token.length())) + "...");
 
             // Usar validateToken para obtener claims
+            System.out.println("Validando token...");
             Claims claims = jwtService.validateToken(token);
+            System.out.println("Token validado exitosamente");
+
             String email = claims.getSubject(); // El email está en el subject
+            System.out.println("Email del token: " + email);
 
             // Buscar usuario
+            System.out.println("Buscando usuario en DB...");
             AppUser user = repo.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+            System.out.println("Usuario encontrado: " + user.getId());
+            System.out.println("getUserType(): " + user.getUserType());
+            System.out.println("getActiveRole(): " + user.getActiveRole());
 
             // Preparar respuesta
             Map<String, Object> response = new HashMap<>();
@@ -67,8 +79,14 @@ public class AppUserServiceImpl implements AppUserService {
                 response.put("nextAllowedSwitchDate", user.getNextAllowedRoleSwitchDate());
             }
 
+            System.out.println("Response: " + response);
+            System.out.println("=== checkUserRoles SUCCESS ===");
             return response;
         } catch (Exception e) {
+            System.err.println("=== checkUserRoles ERROR ===");
+            System.err.println("Error class: " + e.getClass().getName());
+            System.err.println("Error message: " + e.getMessage());
+            e.printStackTrace();
             throw new RuntimeException("Error verificando roles: " + e.getMessage());
         }
     }
