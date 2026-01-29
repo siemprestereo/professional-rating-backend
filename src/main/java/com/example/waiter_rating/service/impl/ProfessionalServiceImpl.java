@@ -2,8 +2,9 @@ package com.example.waiter_rating.service.impl;
 
 import com.example.waiter_rating.dto.request.ProfessionalRequest;
 import com.example.waiter_rating.dto.response.ProfessionalResponse;
-import com.example.waiter_rating.model.Professional;
+import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.model.ProfessionType;
+import com.example.waiter_rating.model.Professional;
 import com.example.waiter_rating.repository.ProfessionalRepo;
 import com.example.waiter_rating.repository.RatingRepo;
 import com.example.waiter_rating.service.ProfessionalService;
@@ -36,13 +37,14 @@ public class ProfessionalServiceImpl implements ProfessionalService {
         Professional professional = new Professional();
         professional.setName(request.getName());
         professional.setEmail(request.getEmail());
-        professional.setPassword(request.getPassword()); // TODO: Encriptar con BCrypt
+        professional.setPassword(request.getPassword());
         professional.setProfilePicture(request.getProfilePicture());
         professional.setProvider(request.getProvider() != null ? request.getProvider() : "LOCAL");
         professional.setProviderId(request.getProviderId());
         professional.setEmailVerified(false);
-        professional.setProfessionType(request.getProfessionType()); // NUEVO
+        professional.setProfessionType(request.getProfessionType());
         professional.setMonthlyWorkplaceChanges(0);
+        professional.setActiveRole(AppUser.UserRole.PROFESSIONAL); // ✅ AGREGADO
 
         professional = professionalRepo.save(professional);
         return toResponse(professional);
@@ -135,7 +137,6 @@ public class ProfessionalServiceImpl implements ProfessionalService {
     @Override
     @Transactional
     public Professional findOrCreateFromGoogle(String email, String name, String googleId, Boolean emailVerified) {
-        // Buscar si ya existe
         Optional<Professional> existingProfessional = professionalRepo.findByEmail(email);
 
         if (existingProfessional.isPresent()) {
@@ -143,7 +144,6 @@ public class ProfessionalServiceImpl implements ProfessionalService {
             return existingProfessional.get();
         }
 
-        // Si no existe, crear nuevo
         System.out.println("➕ Creando nuevo profesional desde Google: " + email);
         Professional newProfessional = new Professional();
         newProfessional.setName(name);
@@ -152,7 +152,7 @@ public class ProfessionalServiceImpl implements ProfessionalService {
         newProfessional.setProviderId(googleId);
         newProfessional.setEmailVerified(emailVerified != null ? emailVerified : false);
         newProfessional.setMonthlyWorkplaceChanges(0);
-        // ProfessionType se configurará más tarde cuando complete su perfil
+        newProfessional.setActiveRole(AppUser.UserRole.PROFESSIONAL); // ✅ AGREGADO
 
         return professionalRepo.save(newProfessional);
     }

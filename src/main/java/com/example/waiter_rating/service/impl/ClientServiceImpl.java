@@ -14,7 +14,6 @@ import com.example.waiter_rating.service.CvService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -24,9 +23,7 @@ public class ClientServiceImpl implements ClientService {
 
     private final ClientRepo clientRepo;
     private final AppUserRepo appUserRepo;
-
     private final ProfessionalRepo professionalRepo;
-
     private final CvService cvService;
 
     public ClientServiceImpl(ClientRepo clientRepo, AppUserRepo appUserRepo, ProfessionalRepo professionalRepo, CvService cvService) {
@@ -47,11 +44,12 @@ public class ClientServiceImpl implements ClientService {
         Client client = new Client();
         client.setName(request.getName());
         client.setEmail(request.getEmail());
-        client.setPassword(request.getPassword()); // TODO: Encriptar con BCrypt
+        client.setPassword(request.getPassword());
         client.setProfilePicture(request.getProfilePicture());
         client.setProvider(request.getProvider() != null ? request.getProvider() : "LOCAL");
         client.setProviderId(request.getProviderId());
         client.setEmailVerified(false);
+        client.setActiveRole(AppUser.UserRole.CLIENT); // ✅ AGREGADO
 
         client = clientRepo.save(client);
         return toResponse(client);
@@ -85,7 +83,6 @@ public class ClientServiceImpl implements ClientService {
 
         client.setName(request.getName());
         client.setProfilePicture(request.getProfilePicture());
-        // No permitir cambiar email ni password aquí (hacerlo en endpoints dedicados)
 
         client = clientRepo.save(client);
         return toResponse(client);
@@ -100,7 +97,6 @@ public class ClientServiceImpl implements ClientService {
         clientRepo.deleteById(id);
     }
 
-    // ========== Mapper ==========
     private ClientResponse toResponse(Client client) {
         ClientResponse response = new ClientResponse();
         response.setId(client.getId());
@@ -119,7 +115,6 @@ public class ClientServiceImpl implements ClientService {
     @Override
     @Transactional
     public Client findOrCreateFromGoogle(String email, String name, String googleId, Boolean emailVerified) {
-        // Buscar si ya existe
         Optional<AppUser> existingUser = appUserRepo.findByEmail(email);
 
         if (existingUser.isPresent() && existingUser.get() instanceof Client) {
@@ -128,13 +123,13 @@ public class ClientServiceImpl implements ClientService {
             return existing;
         }
 
-        // Crear nuevo cliente
         Client newClient = new Client();
         newClient.setName(name);
         newClient.setEmail(email);
-        newClient.setProvider("GOOGLE");  // ← String, no enum
+        newClient.setProvider("GOOGLE");
         newClient.setProviderId(googleId);
         newClient.setEmailVerified(emailVerified != null ? emailVerified : false);
+        newClient.setActiveRole(AppUser.UserRole.CLIENT); // ✅ AGREGADO
 
         Client saved = clientRepo.save(newClient);
         System.out.println("✅ Nuevo cliente creado: " + saved.getName() + " (ID: " + saved.getId() + ")");
@@ -150,16 +145,13 @@ public class ClientServiceImpl implements ClientService {
     @Override
     @Transactional
     public Professional upgradeToProfessional(Long clientId, String professionType, String professionalTitle) {
-        // 1. Buscar el cliente
         Client client = clientRepo.findById(clientId)
                 .orElseThrow(() -> new IllegalArgumentException("Cliente no encontrado"));
 
-        // 2. Verificar que no sea ya un profesional
         if (!(client instanceof Client)) {
             throw new IllegalStateException("Este usuario ya es un profesional");
         }
 
-        // 3. Validar y convertir professionType a enum
         ProfessionType profession;
         try {
             profession = ProfessionType.valueOf(professionType.toUpperCase());
@@ -167,7 +159,6 @@ public class ClientServiceImpl implements ClientService {
             throw new IllegalArgumentException("Tipo de profesión inválido: " + professionType);
         }
 
-        // 4. Crear el nuevo Professional con los mismos datos básicos
         Professional professional = new Professional();
         professional.setEmail(client.getEmail());
         professional.setName(client.getName());
@@ -176,16 +167,12 @@ public class ClientServiceImpl implements ClientService {
         professional.setEmailVerified(client.getEmailVerified());
         professional.setProvider(client.getProvider());
         professional.setProviderId(client.getProviderId());
-        professional.setProfessionType(profession); // ← CORREGIDO: usar el enum
+        professional.setProfessionType(profession);
         professional.setProfessionalTitle(professionalTitle);
+        professional.setActiveRole(AppUser.UserRole.PROFESSIONAL); // ✅ AGREGADO
 
-        // 5. Eliminar el cliente viejo
         clientRepo.delete(client);
-
-        // 6. Guardar el profesional nuevo
         professional = professionalRepo.save(professional);
-
-        // 7. Crear CV vacío para el profesional
         cvService.getOrCreateForProfessional(professional.getId());
 
         System.out.println("✅ Cliente " + clientId + " convertido a Professional " + professional.getId());
