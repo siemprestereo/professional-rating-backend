@@ -2,9 +2,7 @@ package com.example.waiter_rating.service.impl;
 
 import com.example.waiter_rating.dto.response.FavoriteProfessionalResponse;
 import com.example.waiter_rating.dto.response.WorkHistoryResponse;
-import com.example.waiter_rating.model.Client;
 import com.example.waiter_rating.model.FavoriteProfessional;
-import com.example.waiter_rating.model.Professional;
 import com.example.waiter_rating.model.Rating;
 import com.example.waiter_rating.model.WorkHistory;
 import com.example.waiter_rating.repository.ClientRepo;

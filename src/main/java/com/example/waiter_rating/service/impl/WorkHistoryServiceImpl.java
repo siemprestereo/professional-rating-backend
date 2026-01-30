@@ -3,7 +3,6 @@ package com.example.waiter_rating.service.impl;
 import com.example.waiter_rating.dto.request.WorkHistoryRequest;
 import com.example.waiter_rating.model.Business;
 import com.example.waiter_rating.model.BusinessType;
-import com.example.waiter_rating.model.Professional;
 import com.example.waiter_rating.model.WorkHistory;
 import com.example.waiter_rating.repository.BusinessRepo;
 import com.example.waiter_rating.repository.ProfessionalRepo;

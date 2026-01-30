@@ -1,7 +1,6 @@
 package com.example.waiter_rating.controller;
 
 import com.example.waiter_rating.dto.response.QrCreateResponse;
-import com.example.waiter_rating.model.Professional;
 import com.example.waiter_rating.service.AuthService;
 import com.example.waiter_rating.service.QrService;
 import org.springframework.http.ResponseEntity;

@@ -2,7 +2,6 @@ package com.example.waiter_rating.service.impl;
 
 import com.example.waiter_rating.dto.response.EducationResponse;
 import com.example.waiter_rating.model.Education;
-import com.example.waiter_rating.model.Professional;
 import com.example.waiter_rating.repository.EducationRepo;
 import com.example.waiter_rating.repository.ProfessionalRepo;
 import com.example.waiter_rating.service.EducationService;

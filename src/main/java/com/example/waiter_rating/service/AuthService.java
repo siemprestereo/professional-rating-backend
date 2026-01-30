@@ -1,8 +1,6 @@
 package com.example.waiter_rating.service;
 
 import com.example.waiter_rating.model.AppUser;
-import com.example.waiter_rating.model.Client;
-import com.example.waiter_rating.model.Professional;
 
 import java.util.Optional;
 

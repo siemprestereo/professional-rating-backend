@@ -1,9 +1,7 @@
 package com.example.waiter_rating.service.impl;
 
 import com.example.waiter_rating.model.AppUser;
-import com.example.waiter_rating.model.Client;
 import com.example.waiter_rating.model.ProfessionType;
-import com.example.waiter_rating.model.Professional;
 import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.repository.ClientRepo;
 import com.example.waiter_rating.repository.ProfessionalRepo;

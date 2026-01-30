@@ -1,7 +1,5 @@
 package com.example.waiter_rating.security;
 
-import com.example.waiter_rating.model.Client;
-import com.example.waiter_rating.model.Professional;
 import com.example.waiter_rating.service.ClientService;
 import com.example.waiter_rating.service.JwtService;
 import com.example.waiter_rating.service.ProfessionalService;

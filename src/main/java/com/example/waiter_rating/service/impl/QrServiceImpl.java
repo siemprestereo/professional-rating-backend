@@ -1,7 +1,6 @@
 package com.example.waiter_rating.service.impl;
 
 import com.example.waiter_rating.dto.response.QrCreateResponse;
-import com.example.waiter_rating.model.Professional;
 import com.example.waiter_rating.model.QrToken;
 import com.example.waiter_rating.model.WorkHistory;
 import com.example.waiter_rating.repository.QrTokenRepo;

@@ -3,7 +3,6 @@ package com.example.waiter_rating.service;
 import com.example.waiter_rating.dto.request.ProfessionalRequest;
 import com.example.waiter_rating.dto.response.ProfessionalResponse;
 import com.example.waiter_rating.model.ProfessionType;
-import com.example.waiter_rating.model.Professional;
 
 import java.util.List;
 import java.util.Optional;

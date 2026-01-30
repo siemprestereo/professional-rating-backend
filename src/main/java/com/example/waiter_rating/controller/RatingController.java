@@ -3,7 +3,6 @@ package com.example.waiter_rating.controller;
 import com.example.waiter_rating.dto.request.RatingFromQrRequest;
 import com.example.waiter_rating.dto.request.RatingRequest;
 import com.example.waiter_rating.dto.response.RatingResponse;
-import com.example.waiter_rating.model.Client;
 import com.example.waiter_rating.model.Rating;
 import com.example.waiter_rating.service.AuthService;
 import com.example.waiter_rating.service.RatingService;
