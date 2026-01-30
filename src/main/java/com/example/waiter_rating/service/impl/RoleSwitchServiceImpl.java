@@ -24,7 +24,7 @@ public class RoleSwitchServiceImpl implements RoleSwitchService {
 
     @Override
     @Transactional
-    public AppUser switchRole(Long userId, AppUser.UserRole newRole, String professionType, String professionalTitle) {
+    public AppUser switchRole(Long userId, UserRole newRole, String professionType, String professionalTitle) {
         // 1. Buscar el usuario
         AppUser user = appUserRepo.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));

@@ -1,9 +1,9 @@
 package com.example.waiter_rating.service;
 
 import com.example.waiter_rating.model.AppUser;
+import com.example.waiter_rating.model.UserRole;
 
 public interface RoleSwitchService {
-
     /**
      * Cambia el rol activo del usuario
      * @param userId ID del usuario
@@ -12,5 +12,5 @@ public interface RoleSwitchService {
      * @param professionalTitle Título profesional (opcional)
      * @return El usuario actualizado
      */
-    AppUser switchRole(Long userId, AppUser.UserRole newRole, String professionType, String professionalTitle);
+    AppUser switchRole(Long userId, UserRole newRole, String professionType, String professionalTitle);
 }
