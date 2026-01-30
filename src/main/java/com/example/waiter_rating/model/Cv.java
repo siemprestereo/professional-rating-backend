@@ -16,10 +16,9 @@ public class Cv {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** Professional dueño del CV (único) */
     @OneToOne
     @JoinColumn(name = "professional_id", nullable = false, unique = true)
-    private Professional professional;
+    private AppUser professional;
 
     /** Descripción general del perfil (texto libre) */
     @Column(length = 1000)

@@ -21,11 +21,11 @@ public class FavoriteProfessional {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_id", nullable = false)
-    private Client client;
+    private AppUser client;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "professional_id", nullable = false)
-    private Professional professional;
+    private AppUser professional;
 
     @Column(name = "saved_at", nullable = false)
     private LocalDateTime savedAt;

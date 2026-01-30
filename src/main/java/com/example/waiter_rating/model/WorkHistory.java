@@ -22,7 +22,7 @@ public class WorkHistory {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "professional_id", nullable = false)
-    private Professional professional;
+    private AppUser professional;
 
     @ManyToOne(optional = true)
     @JoinColumn(name = "business_id")

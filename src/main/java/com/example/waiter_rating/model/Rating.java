@@ -21,15 +21,13 @@ public class Rating {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Cliente que califica
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_id", nullable = true)
-    private Client client;
+    private AppUser client;
 
-    // Professional calificado (renombrado de waiter)
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "professional_id", nullable = false)
-    private Professional professional;
+    private AppUser professional;
 
     // Negocio donde se realizó el servicio (contexto laboral)
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
