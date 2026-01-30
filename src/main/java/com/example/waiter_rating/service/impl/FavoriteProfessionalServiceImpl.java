@@ -2,9 +2,12 @@ package com.example.waiter_rating.service.impl;
 
 import com.example.waiter_rating.dto.response.FavoriteProfessionalResponse;
 import com.example.waiter_rating.dto.response.WorkHistoryResponse;
+import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.model.FavoriteProfessional;
 import com.example.waiter_rating.model.Rating;
+import com.example.waiter_rating.model.UserRole;
 import com.example.waiter_rating.model.WorkHistory;
+import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.repository.FavoriteProfessionalRepo;
 import com.example.waiter_rating.repository.RatingRepo;
 import com.example.waiter_rating.service.FavoriteProfessionalService;
@@ -20,38 +23,33 @@ import java.util.stream.Collectors;
 public class FavoriteProfessionalServiceImpl implements FavoriteProfessionalService {
 
     private final FavoriteProfessionalRepo favoriteProfessionalRepo;
-    private final ClientRepo clientRepo;
-    private final ProfessionalRepo professionalRepo;
+    private final AppUserRepo appUserRepo;
     private final RatingRepo ratingRepo;
 
     public FavoriteProfessionalServiceImpl(
             FavoriteProfessionalRepo favoriteProfessionalRepo,
-            ClientRepo clientRepo,
-            ProfessionalRepo professionalRepo,
+            AppUserRepo appUserRepo,
             RatingRepo ratingRepo) {
         this.favoriteProfessionalRepo = favoriteProfessionalRepo;
-        this.clientRepo = clientRepo;
-        this.professionalRepo = professionalRepo;
+        this.appUserRepo = appUserRepo;
         this.ratingRepo = ratingRepo;
     }
 
     @Override
     @Transactional
     public FavoriteProfessionalResponse addFavorite(Long clientId, Long professionalId, String notes) {
-        // Verificar que el cliente existe
-        Client client = clientRepo.findById(clientId)
+        AppUser client = appUserRepo.findById(clientId)
+                .filter(user -> UserRole.CLIENT.equals(user.getActiveRole()))
                 .orElseThrow(() -> new IllegalArgumentException("Cliente no encontrado"));
 
-        // Verificar que el profesional existe
-        Professional professional = professionalRepo.findById(professionalId)
+        AppUser professional = appUserRepo.findById(professionalId)
+                .filter(user -> UserRole.PROFESSIONAL.equals(user.getActiveRole()))
                 .orElseThrow(() -> new IllegalArgumentException("Profesional no encontrado"));
 
-        // Verificar si ya está en favoritos
         if (favoriteProfessionalRepo.existsByClientIdAndProfessionalId(clientId, professionalId)) {
             throw new IllegalStateException("Este profesional ya está en tus favoritos");
         }
 
-        // Crear favorito
         FavoriteProfessional favorite = FavoriteProfessional.builder()
                 .client(client)
                 .professional(professional)
@@ -128,12 +126,9 @@ public class FavoriteProfessionalServiceImpl implements FavoriteProfessionalServ
         return favoriteProfessionalRepo.countByClientId(clientId);
     }
 
-    // ========== MAPPERS ==========
-
     private FavoriteProfessionalResponse toResponse(FavoriteProfessional favorite) {
-        Professional prof = favorite.getProfessional();
+        AppUser prof = favorite.getProfessional();
 
-        // Mapear workHistory sin filtro de fecha
         List<WorkHistoryResponse> workHistoryList = prof.getWorkHistory().stream()
                 .map(this::mapWorkHistoryToResponse)
                 .collect(Collectors.toList());
@@ -158,9 +153,8 @@ public class FavoriteProfessionalServiceImpl implements FavoriteProfessionalServ
             LocalDate startDate,
             LocalDate endDate) {
 
-        Professional prof = favorite.getProfessional();
+        AppUser prof = favorite.getProfessional();
 
-        // Calcular estadísticas generales en el período
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
 
@@ -175,7 +169,6 @@ public class FavoriteProfessionalServiceImpl implements FavoriteProfessionalServ
                 .average()
                 .orElse(0.0);
 
-        // Mapear workHistory con estadísticas filtradas por período
         List<WorkHistoryResponse> workHistoryList = prof.getWorkHistory().stream()
                 .map(work -> mapWorkHistoryWithStats(work, startDateTime, endDateTime))
                 .collect(Collectors.toList());
@@ -195,13 +188,12 @@ public class FavoriteProfessionalServiceImpl implements FavoriteProfessionalServ
                 .build();
     }
 
-    // Mapper: WorkHistory → WorkHistoryResponse (sin estadísticas de período)
     private WorkHistoryResponse mapWorkHistoryToResponse(WorkHistory work) {
         WorkHistoryResponse response = new WorkHistoryResponse();
         response.setId(work.getId());
         response.setBusinessId(work.getBusiness() != null ? work.getBusiness().getId() : null);
         response.setBusinessName(work.getBusiness() != null ? work.getBusiness().getName() : work.getBusinessName());
-        response.setBusinessType(work.getBusiness() != null ? work.getBusiness().getBusinessType() : null); // ✅ CORREGIDO
+        response.setBusinessType(work.getBusiness() != null ? work.getBusiness().getBusinessType() : null);
         response.setPosition(work.getPosition());
         response.setStartDate(work.getStartDate() != null ? work.getStartDate().toString() : null);
         response.setEndDate(work.getEndDate() != null ? work.getEndDate().toString() : null);
@@ -209,7 +201,6 @@ public class FavoriteProfessionalServiceImpl implements FavoriteProfessionalServ
         response.setIsFreelance(work.getIsFreelance());
         response.setReferenceContact(work.getReferenceContact());
 
-        // Calcular estadísticas totales (sin filtro de fecha)
         List<Rating> allWorkRatings = ratingRepo.findByWorkHistoryId(work.getId());
         Double avgScore = allWorkRatings.stream()
                 .mapToDouble(Rating::getScore)
@@ -222,7 +213,6 @@ public class FavoriteProfessionalServiceImpl implements FavoriteProfessionalServ
         return response;
     }
 
-    // Mapper: WorkHistory → WorkHistoryResponse (con estadísticas filtradas)
     private WorkHistoryResponse mapWorkHistoryWithStats(
             WorkHistory work,
             LocalDateTime startDateTime,
@@ -232,7 +222,7 @@ public class FavoriteProfessionalServiceImpl implements FavoriteProfessionalServ
         response.setId(work.getId());
         response.setBusinessId(work.getBusiness() != null ? work.getBusiness().getId() : null);
         response.setBusinessName(work.getBusiness() != null ? work.getBusiness().getName() : work.getBusinessName());
-        response.setBusinessType(work.getBusiness() != null ? work.getBusiness().getBusinessType() : null); // ✅ CORREGIDO
+        response.setBusinessType(work.getBusiness() != null ? work.getBusiness().getBusinessType() : null);
         response.setPosition(work.getPosition());
         response.setStartDate(work.getStartDate() != null ? work.getStartDate().toString() : null);
         response.setEndDate(work.getEndDate() != null ? work.getEndDate().toString() : null);
@@ -240,7 +230,6 @@ public class FavoriteProfessionalServiceImpl implements FavoriteProfessionalServ
         response.setIsFreelance(work.getIsFreelance());
         response.setReferenceContact(work.getReferenceContact());
 
-        // Calcular estadísticas en el período filtrado
         List<Rating> workRatingsInPeriod = ratingRepo.findByWorkHistoryIdAndCreatedAtBetween(
                 work.getId(),
                 startDateTime,
