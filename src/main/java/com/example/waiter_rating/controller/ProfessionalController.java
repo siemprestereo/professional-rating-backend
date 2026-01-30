@@ -2,7 +2,10 @@ package com.example.waiter_rating.controller;
 
 import com.example.waiter_rating.dto.request.ProfessionalRequest;
 import com.example.waiter_rating.dto.response.ProfessionalResponse;
+import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.model.ProfessionType;
+import com.example.waiter_rating.model.UserRole;
+import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.service.ProfessionalService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -21,30 +24,19 @@ import java.util.stream.Collectors;
 public class ProfessionalController {
 
     private final ProfessionalService professionalService;
-    private final ProfessionalRepo professionalRepo;
+    private final AppUserRepo appUserRepo;
 
-    public ProfessionalController(ProfessionalService professionalService, ProfessionalRepo professionalRepo) {
+    public ProfessionalController(ProfessionalService professionalService, AppUserRepo appUserRepo) {
         this.professionalService = professionalService;
-        this.professionalRepo = professionalRepo;
+        this.appUserRepo = appUserRepo;
     }
 
-    /** Registrar un nuevo professional */
     @PostMapping
     public ResponseEntity<ProfessionalResponse> create(@Valid @RequestBody ProfessionalRequest request) {
         ProfessionalResponse response = professionalService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    // ============================================
-    // ENDPOINTS DE BÚSQUEDA - NUEVOS
-    // ============================================
-
-    /**
-     * Buscar profesionales por query (nombre, profesión, ubicación)
-     * Solo devuelve profesionales que:
-     * - searchable = true
-     * - Tienen al menos un trabajo activo
-     */
     @GetMapping("/search")
     public ResponseEntity<?> searchProfessionals(@RequestParam String query) {
         try {
@@ -56,24 +48,21 @@ public class ProfessionalController {
 
             String searchTerm = query.toLowerCase().trim();
 
-            // Buscar profesionales searchable con trabajos activos
-            List<Professional> professionals = professionalRepo.findAll().stream()
+            List<AppUser> professionals = appUserRepo.findAll().stream()
+                    .filter(p -> UserRole.PROFESSIONAL.equals(p.getActiveRole()))
                     .filter(p -> p.getSearchable() != null && p.getSearchable())
                     .filter(p -> p.getWorkHistory() != null &&
                             p.getWorkHistory().stream().anyMatch(wh -> wh.getIsActive()))
                     .filter(p -> {
-                        // Buscar por nombre
                         if (p.getName() != null && p.getName().toLowerCase().contains(searchTerm)) {
                             return true;
                         }
-                        // Buscar por tipo de profesión
                         if (p.getProfessionType() != null) {
                             String professionName = translateProfession(p.getProfessionType());
                             if (professionName.toLowerCase().contains(searchTerm)) {
                                 return true;
                             }
                         }
-                        // Buscar por ubicación
                         if (p.getLocation() != null && p.getLocation().toLowerCase().contains(searchTerm)) {
                             return true;
                         }
@@ -83,7 +72,6 @@ public class ProfessionalController {
 
             System.out.println("✅ Encontrados: " + professionals.size() + " profesionales");
 
-            // Mapear a respuesta simplificada
             List<Map<String, Object>> response = professionals.stream()
                     .map(this::toSearchResponse)
                     .collect(Collectors.toList());
@@ -98,19 +86,13 @@ public class ProfessionalController {
         }
     }
 
-    /**
-     * Obtener top profesionales (mejores calificados)
-     * Solo devuelve profesionales que:
-     * - searchable = true
-     * - Tienen al menos un trabajo activo
-     * - Ordenados por reputationScore descendente
-     */
     @GetMapping("/search/top")
     public ResponseEntity<?> getTopProfessionals() {
         try {
             System.out.println("🌟 Obteniendo top profesionales");
 
-            List<Professional> topProfessionals = professionalRepo.findAll().stream()
+            List<AppUser> topProfessionals = appUserRepo.findAll().stream()
+                    .filter(p -> UserRole.PROFESSIONAL.equals(p.getActiveRole()))
                     .filter(p -> p.getSearchable() != null && p.getSearchable())
                     .filter(p -> p.getWorkHistory() != null &&
                             p.getWorkHistory().stream().anyMatch(wh -> wh.getIsActive()))
@@ -138,11 +120,6 @@ public class ProfessionalController {
         }
     }
 
-    // ============================================
-    // ENDPOINTS CON RUTAS ESPECÍFICAS
-    // ============================================
-
-    /** Obtener estado searchable del usuario autenticado */
     @GetMapping("/me/searchable-status")
     public ResponseEntity<?> getMySearchableStatus() {
         try {
@@ -156,14 +133,14 @@ public class ProfessionalController {
             String email = authentication.getPrincipal().toString();
             System.out.println("✅ Email obtenido: " + email);
 
-            Optional<Professional> professionalOpt = professionalRepo.findByEmail(email);
+            Optional<AppUser> professionalOpt = appUserRepo.findByEmail(email);
 
-            if (professionalOpt.isEmpty()) {
+            if (professionalOpt.isEmpty() || !UserRole.PROFESSIONAL.equals(professionalOpt.get().getActiveRole())) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(Map.of("error", "Profesional no encontrado"));
             }
 
-            Professional professional = professionalOpt.get();
+            AppUser professional = professionalOpt.get();
             Boolean searchable = professional.getSearchable();
 
             return ResponseEntity.ok(Map.of("searchable", searchable != null ? searchable : false));
@@ -175,7 +152,6 @@ public class ProfessionalController {
         }
     }
 
-    /** Actualizar estado searchable del usuario autenticado */
     @PutMapping("/me/searchable")
     public ResponseEntity<?> updateMySearchable(@RequestBody Map<String, Boolean> request) {
         try {
@@ -189,14 +165,14 @@ public class ProfessionalController {
             String email = authentication.getPrincipal().toString();
             System.out.println("✅ Email obtenido: " + email);
 
-            Optional<Professional> professionalOpt = professionalRepo.findByEmail(email);
+            Optional<AppUser> professionalOpt = appUserRepo.findByEmail(email);
 
-            if (professionalOpt.isEmpty()) {
+            if (professionalOpt.isEmpty() || !UserRole.PROFESSIONAL.equals(professionalOpt.get().getActiveRole())) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(Map.of("error", "Profesional no encontrado"));
             }
 
-            Professional professional = professionalOpt.get();
+            AppUser professional = professionalOpt.get();
 
             Boolean searchable = request.get("searchable");
             if (searchable == null) {
@@ -205,7 +181,7 @@ public class ProfessionalController {
             }
 
             professional.setSearchable(searchable);
-            professionalRepo.save(professional);
+            appUserRepo.save(professional);
 
             return ResponseEntity.ok(Map.of(
                     "searchable", searchable,
@@ -221,40 +197,11 @@ public class ProfessionalController {
         }
     }
 
-    /** Obtener estado searchable (sin ID en path) - LEGACY */
     @GetMapping("/searchable-status")
     public ResponseEntity<?> getSearchableStatus() {
-        try {
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-            if (authentication == null || authentication.getPrincipal() == null) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("error", "No autenticado"));
-            }
-
-            String email = authentication.getPrincipal().toString();
-            System.out.println("✅ Email obtenido: " + email);
-
-            Optional<Professional> professionalOpt = professionalRepo.findByEmail(email);
-
-            if (professionalOpt.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(Map.of("error", "Profesional no encontrado"));
-            }
-
-            Professional professional = professionalOpt.get();
-            Boolean searchable = professional.getSearchable();
-
-            return ResponseEntity.ok(Map.of("searchable", searchable != null ? searchable : false));
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Error al obtener estado: " + e.getMessage()));
-        }
+        return getMySearchableStatus();
     }
 
-    /** Toggle searchable (sin ID en path) - LEGACY */
     @PutMapping("/toggle-searchable")
     public ResponseEntity<?> toggleSearchable() {
         try {
@@ -266,22 +213,21 @@ public class ProfessionalController {
             }
 
             String email = authentication.getPrincipal().toString();
-            System.out.println("✅ Email obtenido: " + email);
 
-            Optional<Professional> professionalOpt = professionalRepo.findByEmail(email);
+            Optional<AppUser> professionalOpt = appUserRepo.findByEmail(email);
 
-            if (professionalOpt.isEmpty()) {
+            if (professionalOpt.isEmpty() || !UserRole.PROFESSIONAL.equals(professionalOpt.get().getActiveRole())) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(Map.of("error", "Profesional no encontrado"));
             }
 
-            Professional professional = professionalOpt.get();
+            AppUser professional = professionalOpt.get();
 
             Boolean currentValue = professional.getSearchable();
-            Boolean newValue = (currentValue == null || !currentValue) ? true : false;
+            Boolean newValue = (currentValue == null || !currentValue);
             professional.setSearchable(newValue);
 
-            professionalRepo.save(professional);
+            appUserRepo.save(professional);
 
             return ResponseEntity.ok(Map.of(
                     "searchable", professional.getSearchable(),
@@ -297,7 +243,6 @@ public class ProfessionalController {
         }
     }
 
-    /** Obtener professional por email */
     @GetMapping("/email/{email}")
     public ResponseEntity<ProfessionalResponse> getByEmail(@PathVariable String email) {
         return professionalService.getByEmail(email)
@@ -305,7 +250,6 @@ public class ProfessionalController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    /** Listar todos los professionals */
     @GetMapping
     public ResponseEntity<List<ProfessionalResponse>> listAll(
             @RequestParam(required = false) ProfessionType professionType) {
@@ -316,11 +260,6 @@ public class ProfessionalController {
         return ResponseEntity.ok(professionalService.listAll());
     }
 
-    // ============================================
-    // ENDPOINTS CON {id} - AL FINAL
-    // ============================================
-
-    /** Obtener professional por ID */
     @GetMapping("/{id}")
     public ResponseEntity<ProfessionalResponse> getById(@PathVariable Long id) {
         return professionalService.getById(id)
@@ -328,7 +267,6 @@ public class ProfessionalController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    /** Actualizar datos del professional */
     @PutMapping("/{id}")
     public ResponseEntity<ProfessionalResponse> update(
             @PathVariable Long id,
@@ -337,35 +275,25 @@ public class ProfessionalController {
         return ResponseEntity.ok(response);
     }
 
-    /** Eliminar professional */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         professionalService.delete(id);
         return ResponseEntity.noContent().build();
     }
 
-    /** Verificar si puede cambiar de lugar de trabajo */
     @GetMapping("/{id}/can-change-workplace")
     public ResponseEntity<Map<String, Boolean>> canChangeWorkplace(@PathVariable Long id) {
         boolean canChange = professionalService.canChangeWorkplace(id);
         return ResponseEntity.ok(Map.of("canChange", canChange));
     }
 
-    /** Registrar un cambio de lugar de trabajo */
     @PostMapping("/{id}/register-workplace-change")
     public ResponseEntity<Map<String, String>> registerWorkplaceChange(@PathVariable Long id) {
         professionalService.registerWorkplaceChange(id);
         return ResponseEntity.ok(Map.of("message", "Cambio de lugar de trabajo registrado exitosamente"));
     }
 
-    // ============================================
-    // MÉTODOS AUXILIARES
-    // ============================================
-
-    /**
-     * Convierte un Professional a un formato simplificado para búsquedas
-     */
-    private Map<String, Object> toSearchResponse(Professional p) {
+    private Map<String, Object> toSearchResponse(AppUser p) {
         return Map.of(
                 "id", p.getId(),
                 "name", p.getName() != null ? p.getName() : "",
@@ -376,9 +304,6 @@ public class ProfessionalController {
         );
     }
 
-    /**
-     * Traduce el tipo de profesión al español
-     */
     private String translateProfession(ProfessionType type) {
         switch (type) {
             case WAITER: return "Mozo";
