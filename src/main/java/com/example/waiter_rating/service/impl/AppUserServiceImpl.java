@@ -20,15 +20,10 @@ public class AppUserServiceImpl implements AppUserService {
     private final AppUserRepo repo;
     private final JwtService jwtService;
 
-    private final ProfessionalRepo professionalRepo;
-    private final ClientRepo clientRepo;
-
     @Autowired
-    public AppUserServiceImpl(AppUserRepo repo, JwtService jwtService, ProfessionalRepo professionalRepo, ClientRepo clientRepo) {
+    public AppUserServiceImpl(AppUserRepo repo, JwtService jwtService) {
         this.repo = repo;
         this.jwtService = jwtService;
-        this.professionalRepo = professionalRepo;
-        this.clientRepo = clientRepo;
     }
 
     @Override
@@ -57,23 +52,21 @@ public class AppUserServiceImpl implements AppUserService {
             String email = claims.getSubject();
             System.out.println("Email del token: " + email);
 
-            // ✅ NUEVO: Buscar si existen perfiles de CLIENT y PROFESSIONAL
-            boolean hasClientProfile = clientRepo.findByEmail(email).isPresent();
-            boolean hasProfessionalProfile = professionalRepo.findByEmail(email).isPresent();
-
-            System.out.println("hasClientProfile: " + hasClientProfile);
-            System.out.println("hasProfessionalProfile: " + hasProfessionalProfile);
-
-            // Buscar usuario para obtener activeRole
             AppUser user = repo.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
+            // Con AppUser unificado, un usuario puede tener AMBOS roles configurados
+            // Solo necesitamos verificar si tiene los campos de Professional poblados
+            boolean hasClientRole = true; // Todos los usuarios pueden ser clientes
+            boolean hasProfessionalRole = user.getProfessionType() != null; // Solo si tiene profession type configurado
+
+            System.out.println("hasClientRole: " + hasClientRole);
+            System.out.println("hasProfessionalRole: " + hasProfessionalRole);
             System.out.println("activeRole: " + user.getActiveRole());
 
-            // Preparar respuesta
             Map<String, Object> response = new HashMap<>();
-            response.put("hasClientRole", hasClientProfile);
-            response.put("hasProfessionalRole", hasProfessionalProfile);
+            response.put("hasClientRole", hasClientRole);
+            response.put("hasProfessionalRole", hasProfessionalRole);
             response.put("activeRole", user.getActiveRole().name());
             response.put("canSwitchRole", user.canSwitchRole());
 
@@ -91,7 +84,6 @@ public class AppUserServiceImpl implements AppUserService {
         }
     }
 
-    // Método helper para mapear AppUser a AppUserResponse
     private AppUserResponse mapToResponse(AppUser user) {
         AppUserResponse response = new AppUserResponse();
         response.setId(user.getId());

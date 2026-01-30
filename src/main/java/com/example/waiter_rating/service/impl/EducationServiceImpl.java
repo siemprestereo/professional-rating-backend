@@ -1,7 +1,10 @@
 package com.example.waiter_rating.service.impl;
 
 import com.example.waiter_rating.dto.response.EducationResponse;
+import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.model.Education;
+import com.example.waiter_rating.model.UserRole;
+import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.repository.EducationRepo;
 import com.example.waiter_rating.service.EducationService;
 import org.springframework.stereotype.Service;
@@ -13,11 +16,11 @@ import java.util.List;
 public class EducationServiceImpl implements EducationService {
 
     private final EducationRepo educationRepo;
-    private final ProfessionalRepo professionalRepo;
+    private final AppUserRepo appUserRepo;
 
-    public EducationServiceImpl(EducationRepo educationRepo, ProfessionalRepo professionalRepo) {
+    public EducationServiceImpl(EducationRepo educationRepo, AppUserRepo appUserRepo) {
         this.educationRepo = educationRepo;
-        this.professionalRepo = professionalRepo;
+        this.appUserRepo = appUserRepo;
     }
 
     @Override
@@ -39,10 +42,12 @@ public class EducationServiceImpl implements EducationService {
                 education.getDescription()
         );
     }
+
     @Override
     @Transactional
     public Education addEducation(Long professionalId, Education education) {
-        Professional professional = professionalRepo.findById(professionalId)
+        AppUser professional = appUserRepo.findById(professionalId)
+                .filter(user -> UserRole.PROFESSIONAL.equals(user.getActiveRole()))
                 .orElseThrow(() -> new IllegalArgumentException("Professional no encontrado"));
 
         education.setProfessional(professional);
@@ -55,7 +60,6 @@ public class EducationServiceImpl implements EducationService {
         Education education = educationRepo.findById(educationId)
                 .orElseThrow(() -> new IllegalArgumentException("Educación no encontrada"));
 
-        // Verificar que pertenece al profesional
         if (!education.getProfessional().getId().equals(professionalId)) {
             throw new IllegalArgumentException("No tienes permiso para editar esta educación");
         }

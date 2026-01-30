@@ -1,7 +1,10 @@
 package com.example.waiter_rating.service.impl;
 
+import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.model.Cv;
 import com.example.waiter_rating.model.Rating;
+import com.example.waiter_rating.model.UserRole;
+import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.repository.CvRepo;
 import com.example.waiter_rating.repository.RatingRepo;
 import com.example.waiter_rating.service.CvService;
@@ -15,19 +18,20 @@ import java.util.Optional;
 public class CvServiceImpl implements CvService {
 
     private final CvRepo cvRepo;
-    private final ProfessionalRepo professionalRepo;
+    private final AppUserRepo appUserRepo;
     private final RatingRepo ratingRepo;
 
-    public CvServiceImpl(CvRepo cvRepo, ProfessionalRepo professionalRepo, RatingRepo ratingRepo) {
+    public CvServiceImpl(CvRepo cvRepo, AppUserRepo appUserRepo, RatingRepo ratingRepo) {
         this.cvRepo = cvRepo;
-        this.professionalRepo = professionalRepo;
+        this.appUserRepo = appUserRepo;
         this.ratingRepo = ratingRepo;
     }
 
     @Override
     @Transactional
     public Cv getOrCreateForProfessional(Long professionalId) {
-        Professional professional = professionalRepo.findById(professionalId)
+        AppUser professional = appUserRepo.findById(professionalId)
+                .filter(user -> UserRole.PROFESSIONAL.equals(user.getActiveRole()))
                 .orElseThrow(() -> new IllegalArgumentException("Professional no encontrado: " + professionalId));
 
         Optional<Cv> existing = cvRepo.findByProfessionalId(professionalId);
@@ -36,7 +40,6 @@ public class CvServiceImpl implements CvService {
             return existing.get();
         }
 
-        // Crear nuevo CV
         Cv cv = Cv.builder()
                 .professional(professional)
                 .description("")
@@ -53,7 +56,6 @@ public class CvServiceImpl implements CvService {
         Cv cv = cvRepo.findByProfessionalId(professionalId)
                 .orElseThrow(() -> new IllegalArgumentException("CV no encontrado para el professional: " + professionalId));
 
-        // Calcular reputación en tiempo real desde el Professional
         cv.updateReputationFromProfessional();
 
         return cv;
@@ -81,7 +83,6 @@ public class CvServiceImpl implements CvService {
         Cv cv = cvRepo.findByProfessionalId(professionalId)
                 .orElseThrow(() -> new IllegalArgumentException("CV no encontrado para el professional: " + professionalId));
 
-        // Actualizar reputación desde el Professional
         recalculateReputationInternal(cv);
 
         return cvRepo.save(cv);
@@ -96,9 +97,6 @@ public class CvServiceImpl implements CvService {
         cvRepo.deleteById(cvId);
     }
 
-    /**
-     * Recalcula la reputación basándose en los ratings del professional
-     */
     private void recalculateReputationInternal(Cv cv) {
         List<Rating> ratings = ratingRepo.findByProfessionalId(cv.getProfessional().getId());
 

@@ -1,8 +1,11 @@
 package com.example.waiter_rating.service.impl;
 
 import com.example.waiter_rating.dto.response.QrCreateResponse;
+import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.model.QrToken;
+import com.example.waiter_rating.model.UserRole;
 import com.example.waiter_rating.model.WorkHistory;
+import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.repository.QrTokenRepo;
 import com.example.waiter_rating.repository.WorkHistoryRepo;
 import com.example.waiter_rating.service.QrService;
@@ -15,7 +18,6 @@ import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.UUID;
 
-
 @Service
 public class QrServiceImpl implements QrService {
 
@@ -24,7 +26,7 @@ public class QrServiceImpl implements QrService {
     private static final int MAX_TTL_MIN = 5;
 
     private final QrTokenRepo qrRepo;
-    private final ProfessionalRepo professionalRepo;
+    private final AppUserRepo appUserRepo;
     private final WorkHistoryRepo workHistoryRepo;
     private final QrGenerator qrGenerator;
 
@@ -32,11 +34,11 @@ public class QrServiceImpl implements QrService {
     private String frontendUrl;
 
     public QrServiceImpl(QrTokenRepo qrRepo,
-                         ProfessionalRepo professionalRepo,
+                         AppUserRepo appUserRepo,
                          WorkHistoryRepo workHistoryRepo,
                          QrGenerator qrGenerator) {
         this.qrRepo = qrRepo;
-        this.professionalRepo = professionalRepo;
+        this.appUserRepo = appUserRepo;
         this.workHistoryRepo = workHistoryRepo;
         this.qrGenerator = qrGenerator;
     }
@@ -44,43 +46,36 @@ public class QrServiceImpl implements QrService {
     @Override
     @Transactional
     public QrCreateResponse createDynamic(Long professionalId, Long businessId, int ttlMinutes) {
-        Professional professional = professionalRepo.findById(professionalId)
+        AppUser professional = appUserRepo.findById(professionalId)
+                .filter(user -> UserRole.PROFESSIONAL.equals(user.getActiveRole()))
                 .orElseThrow(() -> new IllegalArgumentException("Professional no encontrado: " + professionalId));
 
-        // ✅ VALIDACIÓN: El professional debe tener al menos 1 trabajo actual
         validateProfessionalHasActiveJob(professionalId);
 
-        // Obtener el primer trabajo activo del professional
-        WorkHistory activeWork = professional.getWorkHistory().stream()
+        WorkHistory activeWork = workHistoryRepo.findByProfessionalIdAndIsActiveTrue(professionalId).stream()
                 .filter(WorkHistory::getIsActive)
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("El profesional debe tener al menos un trabajo ACTUAL (activo) para generar un QR."));
 
-        // Normalizar TTL
         int ttl = ttlMinutes <= 0 ? DEFAULT_TTL_MIN
                 : Math.max(MIN_TTL_MIN, Math.min(MAX_TTL_MIN, ttlMinutes));
 
-        // 🔒 Regla clave: un solo QR activo por professional
         qrRepo.invalidateAllActiveForProfessional(professionalId);
 
-        // Generar código único corto
         String code = UUID.randomUUID().toString().replace("-", "").substring(0, 16);
 
-        // Construir el token con todos los campos
         QrToken token = QrToken.builder()
                 .code(code)
                 .professional(professional)
-                .business(activeWork.getBusiness())  // Puede ser null, no hay problema
+                .business(activeWork.getBusiness())
                 .expiresAt(LocalDateTime.now().plusMinutes(ttl))
                 .active(true)
                 .build();
 
-        token = qrRepo.save(token);  // ← LÍNEA AGREGADA - GUARDAR EN BD
+        token = qrRepo.save(token);
 
-        // Generar URL completa del QR
         String qrUrl = frontendUrl + "/rate/" + token.getCode();
 
-        // ✅ Generar imagen PNG del QR en base64
         byte[] pngBytes = qrGenerator.generatePng(qrUrl, 300, 300);
         String base64 = (pngBytes != null) ? Base64.getEncoder().encodeToString(pngBytes) : null;
 
@@ -92,6 +87,7 @@ public class QrServiceImpl implements QrService {
 
         return resp;
     }
+
     @Override
     @Transactional(readOnly = true)
     public Long resolveProfessional(String code) {
@@ -112,11 +108,7 @@ public class QrServiceImpl implements QrService {
         });
     }
 
-    /**
-     * Valida que el professional tenga al menos 1 trabajo actual (isActive = true)
-     */
     private void validateProfessionalHasActiveJob(Long professionalId) {
-        // Verificar que tenga al menos 1 trabajo activo
         boolean hasActiveJob = workHistoryRepo.findByProfessionalIdAndIsActiveTrue(professionalId)
                 .stream()
                 .anyMatch(wh -> wh.getEndDate() == null);

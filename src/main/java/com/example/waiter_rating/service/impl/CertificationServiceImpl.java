@@ -1,7 +1,10 @@
 package com.example.waiter_rating.service.impl;
 
 import com.example.waiter_rating.dto.response.CertificationResponse;
+import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.model.Certification;
+import com.example.waiter_rating.model.UserRole;
+import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.repository.CertificationRepo;
 import com.example.waiter_rating.service.CertificationService;
 import org.springframework.stereotype.Service;
@@ -13,11 +16,11 @@ import java.util.List;
 public class CertificationServiceImpl implements CertificationService {
 
     private final CertificationRepo certificationRepository;
-    private final ProfessionalRepo professionalRepo;
+    private final AppUserRepo appUserRepo;
 
-    public CertificationServiceImpl(CertificationRepo certificationRepository, ProfessionalRepo professionalRepo) {
+    public CertificationServiceImpl(CertificationRepo certificationRepository, AppUserRepo appUserRepo) {
         this.certificationRepository = certificationRepository;
-        this.professionalRepo = professionalRepo;
+        this.appUserRepo = appUserRepo;
     }
 
     public List<CertificationResponse> getCertificationsByProfessional(Long professionalId) {
@@ -39,7 +42,8 @@ public class CertificationServiceImpl implements CertificationService {
     @Override
     @Transactional
     public Certification addCertification(Long professionalId, Certification certification) {
-        Professional professional = professionalRepo.findById(professionalId)
+        AppUser professional = appUserRepo.findById(professionalId)
+                .filter(user -> UserRole.PROFESSIONAL.equals(user.getActiveRole()))
                 .orElseThrow(() -> new IllegalArgumentException("Professional no encontrado"));
 
         certification.setProfessional(professional);
