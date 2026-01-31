@@ -1,6 +1,7 @@
 package com.example.waiter_rating.controller;
 
 import com.example.waiter_rating.dto.request.RatingFromQrRequest;
+import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.dto.request.RatingRequest;
 import com.example.waiter_rating.dto.response.RatingResponse;
 import com.example.waiter_rating.model.Rating;
