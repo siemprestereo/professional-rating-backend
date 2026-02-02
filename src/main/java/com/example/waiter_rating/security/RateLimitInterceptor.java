@@ -20,6 +20,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        System.out.println("🔒 RateLimitInterceptor ejecutándose para: " + request.getRequestURI());
         String key = getClientIP(request);
         String path = request.getRequestURI();
 
