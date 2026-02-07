@@ -2,28 +2,46 @@ package com.example.waiter_rating.service.impl;
 
 import com.example.waiter_rating.dto.response.AppUserResponse;
 import com.example.waiter_rating.model.AppUser;
+import com.example.waiter_rating.model.PasswordResetToken;
+import com.example.waiter_rating.model.VerificationToken;
 import com.example.waiter_rating.repository.AppUserRepo;
+import com.example.waiter_rating.repository.PasswordResetTokenRepository;
+import com.example.waiter_rating.repository.VerificationTokenRepository;
 import com.example.waiter_rating.service.AppUserService;
+import com.example.waiter_rating.service.EmailService;
 import com.example.waiter_rating.service.JwtService;
 import io.jsonwebtoken.Claims;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import com.example.waiter_rating.model.enums.AuthProvider;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class AppUserServiceImpl implements AppUserService {
 
     private final AppUserRepo repo;
     private final JwtService jwtService;
 
+    private final VerificationTokenRepository verificationTokenRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final EmailService emailService;
+
+    private final PasswordEncoder passwordEncoder;
+
     @Autowired
-    public AppUserServiceImpl(AppUserRepo repo, JwtService jwtService) {
+    public AppUserServiceImpl(AppUserRepo repo, JwtService jwtService, VerificationTokenRepository verificationTokenRepository, PasswordResetTokenRepository passwordResetTokenRepository, EmailService emailService, PasswordEncoder passwordEncoder) {
         this.repo = repo;
         this.jwtService = jwtService;
+        this.verificationTokenRepository = verificationTokenRepository;
+        this.passwordResetTokenRepository = passwordResetTokenRepository;
+        this.emailService = emailService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -82,6 +100,116 @@ public class AppUserServiceImpl implements AppUserService {
             e.printStackTrace();
             throw new RuntimeException("Error verificando roles: " + e.getMessage());
         }
+    }
+
+    @Override
+    @Transactional
+    public void createVerificationToken(AppUser user) {
+        // Eliminar tokens anteriores
+        verificationTokenRepository.deleteByUser(user);
+
+        String token = UUID.randomUUID().toString();
+        VerificationToken verificationToken = new VerificationToken(token, user);
+        verificationTokenRepository.save(verificationToken);
+
+        emailService.sendVerificationEmail(user.getEmail(), user.getName(), token);
+        log.info("Verification token created for user: {}", user.getEmail());
+    }
+
+    @Override
+    @Transactional
+    public boolean verifyEmail(String token) {
+        Optional<VerificationToken> tokenOpt = verificationTokenRepository.findByToken(token);
+
+        if (tokenOpt.isEmpty()) {
+            log.warn("Verification token not found: {}", token);
+            return false;
+        }
+
+        VerificationToken verificationToken = tokenOpt.get();
+
+        if (verificationToken.isExpired()) {
+            log.warn("Verification token expired: {}", token);
+            return false;
+        }
+
+        if (verificationToken.isUsed()) {
+            log.warn("Verification token already used: {}", token);
+            return false;
+        }
+
+        AppUser user = verificationToken.getUser();
+        user.setEmailVerified(true);
+        repo.save(user);
+
+        verificationToken.setUsed(true);
+        verificationTokenRepository.save(verificationToken);
+
+        log.info("Email verified for user: {}", user.getEmail());
+        return true;
+    }
+
+    @Override
+    @Transactional
+    public void requestPasswordReset(String email) {
+        Optional<AppUser> userOpt = repo.findByEmailAndAuthProvider(email, AuthProvider.LOCAL);
+
+        if (userOpt.isEmpty()) {
+            log.warn("Password reset requested for non-existent or OAuth user: {}", email);
+            // Por seguridad, no revelamos si el email existe
+            return;
+        }
+
+        AppUser user = userOpt.get();
+
+        // Eliminar tokens anteriores
+        passwordResetTokenRepository.deleteByUser(user);
+
+        String token = UUID.randomUUID().toString();
+        PasswordResetToken resetToken = new PasswordResetToken(token, user);
+        passwordResetTokenRepository.save(resetToken);
+
+        emailService.sendPasswordResetEmail(user.getEmail(), user.getName(), token);
+        log.info("Password reset email sent to: {}", email);
+    }
+
+    @Override
+    @Transactional
+    public boolean resetPassword(String token, String newPassword) {
+        Optional<PasswordResetToken> tokenOpt = passwordResetTokenRepository.findByToken(token);
+
+        if (tokenOpt.isEmpty()) {
+            log.warn("Password reset token not found: {}", token);
+            return false;
+        }
+
+        PasswordResetToken resetToken = tokenOpt.get();
+
+        if (resetToken.isExpired()) {
+            log.warn("Password reset token expired: {}", token);
+            return false;
+        }
+
+        if (resetToken.isUsed()) {
+            log.warn("Password reset token already used: {}", token);
+            return false;
+        }
+
+        AppUser user = resetToken.getUser();
+        user.setPassword(passwordEncoder.encode(newPassword));
+        repo.save(user);
+
+        resetToken.setUsed(true);
+        passwordResetTokenRepository.save(resetToken);
+
+        log.info("Password reset successfully for user: {}", user.getEmail());
+        return true;
+    }
+
+    @Override
+    public void sendWelcomeEmail(AppUser user) {
+        emailService.sendWelcomeEmail(user.getEmail(), user.getName());
+        log.info("Welcome email sent to: {}", user.getEmail());
     }
 
     private AppUserResponse mapToResponse(AppUser user) {

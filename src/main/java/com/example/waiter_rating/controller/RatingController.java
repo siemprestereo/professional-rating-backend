@@ -164,13 +164,28 @@ public class RatingController {
     }
 
     /**
-     * Obtener todas las calificaciones de un cliente específico
-     * Este endpoint es para que el cliente vea sus propias calificaciones
+     * ✅ OPTIMIZADO: Obtener todas las calificaciones de un cliente específico
+     * Acepta parámetro opcional 'limit' para limitar resultados
+     * @param clientId ID del cliente
+     * @param limit Cantidad máxima de resultados (opcional). Ej: ?limit=10
      */
     @GetMapping("/client/{clientId}")
-    public ResponseEntity<List<RatingResponse>> getRatingsByClient(@PathVariable Long clientId) {
+    public ResponseEntity<List<RatingResponse>> getRatingsByClient(
+            @PathVariable Long clientId,
+            @RequestParam(required = false) Integer limit) {
+
         // Obtener las calificaciones del cliente
-        List<Rating> ratings = ratingService.getRatingsByClient(clientId);
+        List<Rating> ratings;
+
+        if (limit != null && limit > 0) {
+            // ✅ Usar método optimizado con límite
+            ratings = ratingService.getRatingsByClient(clientId, limit);
+            System.out.println("🚀 Ratings solicitados con limit=" + limit + " para clientId=" + clientId);
+        } else {
+            // Obtener todos (para historial completo)
+            ratings = ratingService.getRatingsByClient(clientId);
+            System.out.println("📊 Ratings completos solicitados para clientId=" + clientId + " (total: " + ratings.size() + ")");
+        }
 
         // Convertir a DTO
         List<RatingResponse> response = ratings.stream()

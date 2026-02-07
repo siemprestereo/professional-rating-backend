@@ -1,5 +1,6 @@
 package com.example.waiter_rating.model;
 
+import com.example.waiter_rating.model.enums.AuthProvider;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -87,6 +88,14 @@ public class AppUser {
     @Column(name = "searchable")
     @Builder.Default
     private Boolean searchable = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "auth_provider", nullable = false)
+    @Builder.Default
+    private AuthProvider authProvider = AuthProvider.LOCAL;
+
+
+
 
     // ========== RELACIONES ==========
     // CV (solo para professionals)

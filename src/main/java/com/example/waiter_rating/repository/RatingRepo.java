@@ -1,6 +1,7 @@
 package com.example.waiter_rating.repository;
 
 import com.example.waiter_rating.model.Rating;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -64,6 +65,12 @@ public interface RatingRepo extends JpaRepository<Rating, Long> {
             LocalDateTime start,
             LocalDateTime end
     );
+
+
+
+
+
+    List<Rating> findByClientIdOrderByCreatedAtDesc(Long clientId, Pageable pageable);
 }
 
 

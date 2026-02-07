@@ -11,6 +11,8 @@ import com.example.waiter_rating.repository.WorkHistoryRepo;
 import com.example.waiter_rating.service.RatingService;
 import com.example.waiter_rating.service.ProfessionalService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -232,6 +234,17 @@ public class RatingServiceImpl implements RatingService {
     @Override
     @Transactional(readOnly = true)
     public List<Rating> getRatingsByClient(Long clientId) {
+        return ratingRepo.findByClientIdOrderByCreatedAtDesc(clientId);
+    }
+
+    // ✅ NUEVO MÉTODO OPTIMIZADO - Con límite opcional
+    @Override
+    @Transactional(readOnly = true)
+    public List<Rating> getRatingsByClient(Long clientId, Integer limit) {
+        if (limit != null && limit > 0) {
+            Pageable pageable = PageRequest.of(0, limit);
+            return ratingRepo.findByClientIdOrderByCreatedAtDesc(clientId, pageable);
+        }
         return ratingRepo.findByClientIdOrderByCreatedAtDesc(clientId);
     }
 

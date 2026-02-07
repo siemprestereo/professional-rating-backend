@@ -1,6 +1,7 @@
 package com.example.waiter_rating.service;
 
 import com.example.waiter_rating.dto.response.AppUserResponse;
+import com.example.waiter_rating.model.AppUser;
 
 import java.util.List;
 import java.util.Map;
@@ -26,4 +27,10 @@ public interface AppUserService {
      * @throws RuntimeException si el token es inválido o el usuario no existe
      */
     Map<String, Object> checkUserRoles(String authHeader);
+
+    void createVerificationToken(AppUser user);
+    boolean verifyEmail(String token);
+    void requestPasswordReset(String email);
+    boolean resetPassword(String token, String newPassword);
+    void sendWelcomeEmail(AppUser user);
 }
