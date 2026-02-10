@@ -3,7 +3,6 @@ package com.example.waiter_rating.service.impl;
 import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.model.Cv;
 import com.example.waiter_rating.model.Rating;
-import com.example.waiter_rating.model.UserRole;
 import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.repository.CvRepo;
 import com.example.waiter_rating.repository.RatingRepo;
@@ -30,9 +29,14 @@ public class CvServiceImpl implements CvService {
     @Override
     @Transactional
     public Cv getOrCreateForProfessional(Long professionalId) {
+        // ✅ ARREGLADO: Solo verificar que el usuario existe, sin filtrar por rol
         AppUser professional = appUserRepo.findById(professionalId)
-                .filter(user -> UserRole.PROFESSIONAL.equals(user.getActiveRole()))
-                .orElseThrow(() -> new IllegalArgumentException("Professional no encontrado: " + professionalId));
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + professionalId));
+
+        // ✅ OPCIONAL: Validar que tiene datos de profesional configurados
+        if (professional.getProfessionType() == null) {
+            throw new IllegalStateException("El usuario no tiene configurado un tipo de profesión");
+        }
 
         Optional<Cv> existing = cvRepo.findByProfessionalId(professionalId);
 
@@ -43,8 +47,8 @@ public class CvServiceImpl implements CvService {
         Cv cv = Cv.builder()
                 .professional(professional)
                 .description("")
-                .reputationScore(0.0)
-                .totalRatings(0)
+                .reputationScore(professional.getReputationScore() != null ? professional.getReputationScore() : 0.0)
+                .totalRatings(professional.getTotalRatings() != null ? professional.getTotalRatings() : 0)
                 .build();
 
         return cvRepo.save(cv);
