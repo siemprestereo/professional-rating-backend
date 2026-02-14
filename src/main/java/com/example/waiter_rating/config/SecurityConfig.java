@@ -127,12 +127,23 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Usar variable de entorno para allowed origins
-        configuration.setAllowedOriginPatterns(Arrays.asList(allowedOrigins.split(",")));
+        // 1. Cargamos el origen desde la variable que ya tienes en Railway
+        if (allowedOrigins != null && !allowedOrigins.isEmpty()) {
+            // Usamos setAllowedOrigins (más estricto y seguro para producción)
+            configuration.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
+        }
+
+        // 2. Métodos permitidos para Calificalo
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("*"));
+
+        // 3. Headers permitidos (limitamos a los necesarios)
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept"));
+
+        // 4. Permitir credenciales (fundamental para tu flujo OAuth2 y JWT)
         configuration.setAllowCredentials(true);
-        configuration.setExposedHeaders(Arrays.asList("Set-Cookie", "Authorization"));  // ← AGREGAR Authorization
+
+        // 5. Exponer headers para que el Frontend (React/Vue) pueda leerlos
+        configuration.setExposedHeaders(Arrays.asList("Authorization", "Set-Cookie"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

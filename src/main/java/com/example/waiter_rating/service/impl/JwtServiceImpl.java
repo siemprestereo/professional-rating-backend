@@ -2,12 +2,16 @@ package com.example.waiter_rating.service.impl;
 
 import com.example.waiter_rating.service.JwtService;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException; // Importante
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -15,14 +19,18 @@ import java.util.Map;
 @Service
 public class JwtServiceImpl implements JwtService {
 
+    private static final Logger log = LoggerFactory.getLogger(JwtServiceImpl.class);
+
     @Value("${jwt.secret}")
     private String secret;
 
     @Value("${jwt.expiration}")
-    private Long expiration; // en milisegundos (por defecto 24 horas)
+    private Long expiration;
 
     private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(secret.getBytes());
+        // Usamos StandardCharsets.UTF_8 para evitar problemas de encoding entre sistemas
+        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 
     @Override
@@ -53,20 +61,20 @@ public class JwtServiceImpl implements JwtService {
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
-        } catch (Exception e) {
-            throw new RuntimeException("Token inválido o expirado: " + e.getMessage());
+        } catch (JwtException | IllegalArgumentException e) {
+            // Logueamos internamente pero lanzamos una excepción de seguridad específica
+            log.warn("Fallo en la validación del token: {}", e.getMessage());
+            throw new JwtException("Token inválido, expirado o malformado");
         }
     }
 
     @Override
     public Long getUserIdFromToken(String token) {
-        Claims claims = validateToken(token);
-        return claims.get("userId", Long.class);
+        return validateToken(token).get("userId", Long.class);
     }
 
     @Override
     public String getUserTypeFromToken(String token) {
-        Claims claims = validateToken(token);
-        return claims.get("userType", String.class);
+        return validateToken(token).get("userType", String.class);
     }
 }

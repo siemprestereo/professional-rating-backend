@@ -8,6 +8,7 @@ import com.example.waiter_rating.model.Rating;
 import com.example.waiter_rating.service.AuthService;
 import com.example.waiter_rating.service.RatingService;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,6 +17,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/ratings")
+@Slf4j
 public class RatingController {
 
     private final RatingService ratingService;
@@ -29,11 +31,9 @@ public class RatingController {
     /** Crear una calificación (requiere autenticación como CLIENT) */
     @PostMapping
     public ResponseEntity<?> submit(@Valid @RequestBody RatingRequest request) {
-        // Verificar que el usuario está autenticado como cliente
         AppUser client = authService.getCurrentClient()
                 .orElseThrow(() -> new IllegalStateException("Debe estar autenticado como cliente para calificar"));
 
-        // Automáticamente asignar el clientId del usuario logueado
         request.setClientId(client.getId());
 
         Rating r = ratingService.submitRating(request);
@@ -46,11 +46,9 @@ public class RatingController {
             @PathVariable String code,
             @Valid @RequestBody RatingFromQrRequest request) {
 
-        // Verificar que el usuario está autenticado como cliente
         AppUser client = authService.getCurrentClient()
                 .orElseThrow(() -> new IllegalStateException("Debe estar autenticado como cliente para calificar"));
 
-        // Automáticamente asignar el clientId
         request.setClientId(client.getId());
 
         Rating r = ratingService.submitFromQr(code, request);
@@ -65,20 +63,16 @@ public class RatingController {
             @PathVariable Long id,
             @Valid @RequestBody RatingRequest request) {
 
-        // Verificar que está autenticado como cliente
         AppUser client = authService.getCurrentClient()
                 .orElseThrow(() -> new IllegalStateException("Debe estar autenticado como cliente"));
 
-        // Obtener el rating
         Rating rating = ratingService.getRatingById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Rating no encontrado"));
 
-        // ✅ Verificar que el rating pertenece a este cliente
         if (rating.getClient() == null || !rating.getClient().getId().equals(client.getId())) {
             throw new IllegalStateException("No puede editar una calificación que no es suya");
         }
 
-        // ✅ Verificar que está dentro de los 30 minutos
         if (!rating.canEditOrDelete()) {
             throw new IllegalStateException("Solo puede editar calificaciones dentro de los 30 minutos posteriores a su creación");
         }
@@ -93,20 +87,16 @@ public class RatingController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id) {
-        // Verificar que está autenticado como cliente
         AppUser client = authService.getCurrentClient()
                 .orElseThrow(() -> new IllegalStateException("Debe estar autenticado como cliente"));
 
-        // Obtener el rating
         Rating rating = ratingService.getRatingById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Rating no encontrado"));
 
-        // ✅ Verificar que el rating pertenece a este cliente
         if (rating.getClient() == null || !rating.getClient().getId().equals(client.getId())) {
             throw new IllegalStateException("No puede eliminar una calificación que no es suya");
         }
 
-        // ✅ Verificar que está dentro de los 30 minutos
         if (!rating.canEditOrDelete()) {
             throw new IllegalStateException("Solo puede eliminar calificaciones dentro de los 30 minutos posteriores a su creación");
         }
@@ -134,14 +124,11 @@ public class RatingController {
      */
     @GetMapping("/my-ratings")
     public ResponseEntity<List<RatingResponse>> getMyRatings() {
-        // Obtener cliente logueado
         AppUser client = authService.getCurrentClient()
                 .orElseThrow(() -> new IllegalStateException("Debe estar autenticado como cliente"));
 
-        // Obtener sus calificaciones
         List<Rating> ratings = ratingService.getRatingsByClient(client.getId());
 
-        // Convertir a DTO
         List<RatingResponse> response = ratings.stream()
                 .map(this::toResponse)
                 .toList();
@@ -164,30 +151,31 @@ public class RatingController {
     }
 
     /**
-     * ✅ OPTIMIZADO: Obtener todas las calificaciones de un cliente específico
-     * Acepta parámetro opcional 'limit' para limitar resultados
-     * @param clientId ID del cliente
-     * @param limit Cantidad máxima de resultados (opcional). Ej: ?limit=10
+     * Obtener todas las calificaciones de un cliente específico
      */
     @GetMapping("/client/{clientId}")
     public ResponseEntity<List<RatingResponse>> getRatingsByClient(
             @PathVariable Long clientId,
             @RequestParam(required = false) Integer limit) {
 
-        // Obtener las calificaciones del cliente
-        List<Rating> ratings;
+        // SEGURIDAD: Validar que el usuario solo pueda ver sus propios ratings
+        AppUser currentUser = authService.getCurrentUser()
+                .orElseThrow(() -> new IllegalStateException("Usuario no autenticado"));
 
-        if (limit != null && limit > 0) {
-            // ✅ Usar método optimizado con límite
-            ratings = ratingService.getRatingsByClient(clientId, limit);
-            System.out.println("🚀 Ratings solicitados con limit=" + limit + " para clientId=" + clientId);
-        } else {
-            // Obtener todos (para historial completo)
-            ratings = ratingService.getRatingsByClient(clientId);
-            System.out.println("📊 Ratings completos solicitados para clientId=" + clientId + " (total: " + ratings.size() + ")");
+        if (!currentUser.getId().equals(clientId)) {
+            log.warn("Intento de acceso no autorizado al historial del cliente {} por parte del usuario {}", clientId, currentUser.getId());
+            throw new IllegalStateException("No tienes permiso para ver el historial de otro usuario");
         }
 
-        // Convertir a DTO
+        List<Rating> ratings;
+        if (limit != null && limit > 0) {
+            ratings = ratingService.getRatingsByClient(clientId, limit);
+            log.info("Ratings solicitados con limit={} para clientId={}", limit, clientId);
+        } else {
+            ratings = ratingService.getRatingsByClient(clientId);
+            log.info("Historial completo solicitado para clientId={}", clientId);
+        }
+
         List<RatingResponse> response = ratings.stream()
                 .map(this::toResponse)
                 .toList();
@@ -197,7 +185,6 @@ public class RatingController {
 
     /**
      * Obtener calificaciones de un professional (PÚBLICO)
-     * Opcionalmente filtradas por workplace
      */
     @GetMapping("/professional/{professionalId}/ratings")
     public ResponseEntity<List<RatingResponse>> getProfessionalRatings(
@@ -205,12 +192,9 @@ public class RatingController {
             @RequestParam(required = false) Long workHistoryId) {
 
         List<Rating> ratings;
-
         if (workHistoryId != null) {
-            // Filtrar por workplace específico
             ratings = ratingService.getRatingsByProfessionalAndWorkplace(professionalId, workHistoryId);
         } else {
-            // Todos los ratings del professional
             ratings = ratingService.getRatingsForProfessional(professionalId);
         }
 
@@ -233,10 +217,18 @@ public class RatingController {
         dto.setProfessionalName(r.getProfessional().getName());
         dto.setProfessionType(r.getProfessional().getProfessionType());
 
-        // AppUser info (puede ser null)
+        // AppUser info (Privacidad: solo primer nombre)
         if (r.getClient() != null) {
             dto.setClientId(r.getClient().getId());
-            dto.setClientName(r.getClient().getName());
+
+            String fullName = r.getClient().getName();
+            if (fullName != null && !fullName.isBlank()) {
+                // Extraer solo el primer nombre
+                String firstName = fullName.trim().split("\\s+")[0];
+                dto.setClientName(firstName);
+            } else {
+                dto.setClientName("Usuario");
+            }
         }
 
         // Business info
@@ -244,19 +236,16 @@ public class RatingController {
         dto.setBusinessName(r.getBusiness().getName());
         dto.setBusinessType(r.getBusiness().getBusinessType());
 
-        // WorkHistory info (lugar específico donde fue calificado)
+        // WorkHistory info
         if (r.getWorkHistory() != null) {
             dto.setWorkHistoryId(r.getWorkHistory().getId());
             dto.setWorkplaceName(r.getWorkHistory().getBusinessName());
             dto.setWorkplacePosition(r.getWorkHistory().getPosition());
         }
 
-        // Timestamps
         dto.setCreatedAt(r.getCreatedAt());
         dto.setUpdatedAt(r.getUpdatedAt());
         dto.setServiceDate(r.getServiceDate());
-
-        // Can edit?
         dto.setCanEdit(r.canEditOrDelete());
 
         return dto;

@@ -15,18 +15,13 @@ import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.layout.Document;
 import com.itextpdf.layout.borders.SolidBorder;
-import com.itextpdf.layout.element.Cell;
-import com.itextpdf.layout.element.Image;
-import com.itextpdf.layout.element.Paragraph;
-import com.itextpdf.layout.element.Table;
-import com.itextpdf.layout.element.Text;
+import com.itextpdf.layout.element.*;
 import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.properties.UnitValue;
 import com.itextpdf.layout.properties.VerticalAlignment;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -36,11 +31,12 @@ public class PdfServiceImpl implements PdfService {
     private final AppUserRepo appUserRepo;
     private final WorkHistoryRepo workHistoryRepo;
 
-    // Colores personalizados
-    private static final DeviceRgb PRIMARY_COLOR = new DeviceRgb(79, 70, 229); // Azul/Púrpura
-    private static final DeviceRgb SECONDARY_COLOR = new DeviceRgb(107, 114, 128); // Gris
-    private static final DeviceRgb LIGHT_GRAY = new DeviceRgb(248, 250, 252); // Gris muy claro para sidebar
-    private static final DeviceRgb DARK_GRAY = new DeviceRgb(31, 41, 55); // Gris oscuro para texto
+    // Paleta de colores Modernos
+    private static final DeviceRgb PRIMARY_COLOR = new DeviceRgb(79, 70, 229);   // Indigo moderno
+    private static final DeviceRgb SECONDARY_COLOR = new DeviceRgb(107, 114, 128); // Gris suave
+    private static final DeviceRgb SIDEBAR_BG = new DeviceRgb(248, 250, 252);     // Slate 50
+    private static final DeviceRgb TEXT_DARK = new DeviceRgb(31, 41, 55);       // Casi negro
+    private static final DeviceRgb STAR_YELLOW = new DeviceRgb(251, 191, 36);    // Dorado ratings
 
     public PdfServiceImpl(AppUserRepo appUserRepo, WorkHistoryRepo workHistoryRepo) {
         this.appUserRepo = appUserRepo;
@@ -49,344 +45,133 @@ public class PdfServiceImpl implements PdfService {
 
     @Override
     public byte[] generateCvPdf(Long professionalId) throws Exception {
-        // Obtener datos del profesional
         AppUser professional = appUserRepo.findById(professionalId)
                 .orElseThrow(() -> new IllegalArgumentException("Professional no encontrado"));
 
         List<WorkHistory> workHistory = workHistoryRepo.findByProfessionalId(professionalId);
 
-        // Crear PDF en memoria
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         PdfWriter writer = new PdfWriter(baos);
         PdfDocument pdfDoc = new PdfDocument(writer);
         Document document = new Document(pdfDoc);
-
-        // Eliminar márgenes por defecto
         document.setMargins(0, 0, 0, 0);
 
-        // Fuentes
         PdfFont boldFont = PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD);
         PdfFont regularFont = PdfFontFactory.createFont(StandardFonts.HELVETICA);
 
-        // ==================== LAYOUT DOS COLUMNAS ====================
-        float[] columnWidths = {30f, 70f};
+        float[] columnWidths = {33f, 67f};
         Table mainTable = new Table(UnitValue.createPercentArray(columnWidths))
                 .setWidth(UnitValue.createPercentValue(100))
                 .setBorder(null);
 
-        // ==================== COLUMNA IZQUIERDA ====================
+        // --- COLUMNA IZQUIERDA (SIDEBAR) ---
         Cell leftColumn = new Cell()
-                .setBackgroundColor(LIGHT_GRAY)
+                .setBackgroundColor(SIDEBAR_BG)
                 .setBorder(null)
-                .setPadding(25)
+                .setPadding(30)
                 .setVerticalAlignment(VerticalAlignment.TOP);
 
-        // Foto placeholder
         addProfilePhoto(leftColumn, professional, boldFont);
+        leftColumn.add(new Paragraph("\n").setMarginBottom(10));
 
-        // Espacio
-        leftColumn.add(new Paragraph("\n"));
+        addSidebarSectionTitle(leftColumn, "CONTACTO", boldFont);
+        addContactItem(leftColumn, "Email", professional.getEmail(), regularFont);
+        if (professional.getPhone() != null) addContactItem(leftColumn, "Teléfono", professional.getPhone(), regularFont);
+        if (professional.getLocation() != null) addContactItem(leftColumn, "Ubicación", professional.getLocation(), regularFont);
 
-        // Contacto
-        addContactSection(leftColumn, professional, boldFont, regularFont);
-
-        // Espacio
-        leftColumn.add(new Paragraph("\n"));
-
-        // Reputación
-        addReputationSection(leftColumn, professional, boldFont, regularFont);
+        leftColumn.add(new Paragraph("\n").setMarginBottom(15));
+        addReputationBadge(leftColumn, professional, boldFont, regularFont);
 
         mainTable.addCell(leftColumn);
 
-        // ==================== COLUMNA DERECHA ====================
+        // --- COLUMNA DERECHA (CONTENIDO) ---
         Cell rightColumn = new Cell()
                 .setBorder(null)
-                .setPadding(25)
+                .setPadding(40)
                 .setVerticalAlignment(VerticalAlignment.TOP);
 
-        // Header con nombre
-        addNameHeader(rightColumn, professional, boldFont, regularFont);
+        rightColumn.add(new Paragraph(professional.getName().toUpperCase())
+                .setFont(boldFont).setFontSize(28).setFontColor(TEXT_DARK).setMarginBottom(0));
 
-        // Sobre mí
-        if (professional.getCv() != null && professional.getCv().getDescription() != null
-                && !professional.getCv().getDescription().isEmpty()) {
-            addRightSectionTitle(rightColumn, "SOBRE MÍ", boldFont);
-            Paragraph description = new Paragraph(professional.getCv().getDescription())
-                    .setFont(regularFont)
-                    .setFontSize(10)
-                    .setTextAlignment(TextAlignment.JUSTIFIED)
-                    .setMarginBottom(20);
-            rightColumn.add(description);
+        if (professional.getProfessionalTitle() != null) {
+            rightColumn.add(new Paragraph(professional.getProfessionalTitle())
+                    .setFont(regularFont).setFontSize(14).setFontColor(PRIMARY_COLOR).setMarginBottom(20));
         }
 
-        // Experiencia laboral
+        if (professional.getCv() != null && professional.getCv().getDescription() != null) {
+            addContentSectionTitle(rightColumn, "SOBRE MÍ", boldFont);
+            // CAMBIO AQUÍ: Usamos setMultipliedLeading en lugar de setLineSpacing
+            rightColumn.add(new Paragraph(professional.getCv().getDescription())
+                    .setFont(regularFont).setFontSize(10).setMultipliedLeading(1.5f).setTextAlignment(TextAlignment.JUSTIFIED).setMarginBottom(20));
+        }
+
         if (!workHistory.isEmpty()) {
-            addRightSectionTitle(rightColumn, "EXPERIENCIA", boldFont);
-            addWorkHistoryModern(rightColumn, workHistory, boldFont, regularFont);
+            addContentSectionTitle(rightColumn, "EXPERIENCIA LABORAL", boldFont);
+            addTimelineExperience(rightColumn, workHistory, boldFont, regularFont);
         }
 
         mainTable.addCell(rightColumn);
-
-        // Agregar tabla principal
         document.add(mainTable);
-
-        // Footer
-        addFooterModern(document, regularFont);
 
         document.close();
         return baos.toByteArray();
     }
 
     private void addProfilePhoto(Cell cell, AppUser professional, PdfFont boldFont) {
-        String initial = professional.getName().substring(0, 1).toUpperCase();
-
-        // Si tiene foto, intentar cargarla
+        float size = 90f;
         if (professional.getProfilePicture() != null && !professional.getProfilePicture().isEmpty()) {
             try {
-                // Construir ruta absoluta desde la ruta relativa
-                String photoPath = professional.getProfilePicture();
-                if (photoPath.startsWith("/")) {
-                    photoPath = photoPath.substring(1); // Quitar el "/" inicial
-                }
-
-                File photoFile = new File(photoPath);
-
-                if (photoFile.exists()) {
-                    // Cargar imagen
-                    Image photo = new Image(ImageDataFactory.create(photoFile.getAbsolutePath()));
-
-                    // Configurar imagen con aspect ratio preservado
-                    float imgWidth = photo.getImageWidth();
-                    float imgHeight = photo.getImageHeight();
-
-                    // Calcular tamaño manteniendo proporción
-                    float targetSize = 80f;
-                    if (imgWidth > imgHeight) {
-                        photo.scaleToFit(targetSize, targetSize * (imgHeight / imgWidth));
-                    } else {
-                        photo.scaleToFit(targetSize * (imgWidth / imgHeight), targetSize);
-                    }
-
-                    if (Math.abs(imgWidth - imgHeight) < 10) {
-                        photo.scaleToFit(targetSize, targetSize);
-                    }
-
-                    photo.setBorder(new SolidBorder(PRIMARY_COLOR, 3))
-                            .setMarginBottom(15)
-                            .setHorizontalAlignment(com.itextpdf.layout.properties.HorizontalAlignment.CENTER);
-
-                    cell.add(photo);
-                    return;
-                }
-            } catch (Exception e) {
-                System.err.println("Error cargando foto de perfil: " + e.getMessage());
-            }
+                Image photo = new Image(ImageDataFactory.create(professional.getProfilePicture()));
+                photo.scaleToFit(size, size).setBorder(new SolidBorder(ColorConstants.WHITE, 3));
+                cell.add(photo);
+                return;
+            } catch (Exception e) { }
         }
 
-        // Fallback: Círculo con inicial
-        Paragraph photoPlaceholder = new Paragraph(initial)
-                .setFont(boldFont)
-                .setFontSize(40)
-                .setFontColor(ColorConstants.WHITE)
-                .setBackgroundColor(PRIMARY_COLOR)
-                .setTextAlignment(TextAlignment.CENTER)
-                .setWidth(80)
-                .setHeight(80)
-                .setPadding(15)
-                .setMarginBottom(15);
-
-        cell.add(photoPlaceholder);
+        Paragraph initial = new Paragraph(professional.getName().substring(0, 1))
+                .setFont(boldFont).setFontSize(35).setFontColor(ColorConstants.WHITE)
+                .setBackgroundColor(PRIMARY_COLOR).setTextAlignment(TextAlignment.CENTER)
+                .setWidth(size).setHeight(size).setPaddingTop(20);
+        cell.add(initial);
     }
 
-    private void addContactSection(Cell cell, AppUser professional, PdfFont boldFont, PdfFont regularFont) {
-        Paragraph title = new Paragraph("CONTACTO")
-                .setFont(boldFont)
-                .setFontSize(12)
-                .setFontColor(DARK_GRAY)
-                .setMarginBottom(10);
-        cell.add(title);
-
-        addContactItem(cell, "Email", professional.getEmail(), regularFont);
-
-        if (professional.getPhone() != null && !professional.getPhone().isEmpty()) {
-            addContactItem(cell, "Teléfono", professional.getPhone(), regularFont);
-        }
-
-        if (professional.getLocation() != null && !professional.getLocation().isEmpty()) {
-            addContactItem(cell, "Ubicación", professional.getLocation(), regularFont);
-        }
+    private void addSidebarSectionTitle(Cell cell, String title, PdfFont boldFont) {
+        cell.add(new Paragraph(title).setFont(boldFont).setFontSize(11).setFontColor(TEXT_DARK)
+                .setBorderBottom(new SolidBorder(new DeviceRgb(203, 213, 225), 1)).setMarginBottom(10));
     }
 
     private void addContactItem(Cell cell, String label, String value, PdfFont regularFont) {
-        Paragraph labelP = new Paragraph(label)
-                .setFont(regularFont)
-                .setFontSize(9)
-                .setFontColor(SECONDARY_COLOR)
-                .setMarginBottom(2)
-                .setBold();
-        cell.add(labelP);
-
-        Paragraph valueP = new Paragraph(value)
-                .setFont(regularFont)
-                .setFontSize(9)
-                .setFontColor(DARK_GRAY)
-                .setMarginBottom(10);
-        cell.add(valueP);
+        cell.add(new Paragraph(label).setFont(regularFont).setBold().setFontSize(8).setFontColor(SECONDARY_COLOR).setMarginBottom(0));
+        cell.add(new Paragraph(value).setFont(regularFont).setFontSize(9).setFontColor(TEXT_DARK).setMarginBottom(8));
     }
 
-    private void addReputationSection(Cell cell, AppUser professional, PdfFont boldFont, PdfFont regularFont) {
-        double reputationScore = professional.getReputationScore() != null ? professional.getReputationScore() : 0.0;
-        int totalRatings = professional.getTotalRatings() != null ? professional.getTotalRatings() : 0;
-
-        Paragraph title = new Paragraph("REPUTACIÓN")
-                .setFont(boldFont)
-                .setFontSize(12)
-                .setFontColor(DARK_GRAY)
-                .setMarginBottom(10);
-        cell.add(title);
-
-        String stars = "★".repeat((int) Math.round(reputationScore)) +
-                "☆".repeat(5 - (int) Math.round(reputationScore));
-
-        Paragraph starsP = new Paragraph(stars)
-                .setFont(regularFont)
-                .setFontSize(16)
-                .setFontColor(new DeviceRgb(251, 191, 36))
-                .setMarginBottom(5);
-        cell.add(starsP);
-
-        Paragraph avgP = new Paragraph(String.format("%.1f / 5.0", reputationScore))
-                .setFont(boldFont)
-                .setFontSize(11)
-                .setFontColor(DARK_GRAY)
-                .setMarginBottom(3);
-        cell.add(avgP);
-
-        Paragraph totalP = new Paragraph(totalRatings + " calificaciones")
-                .setFont(regularFont)
-                .setFontSize(9)
-                .setFontColor(SECONDARY_COLOR);
-        cell.add(totalP);
+    private void addReputationBadge(Cell cell, AppUser professional, PdfFont boldFont, PdfFont regularFont) {
+        addSidebarSectionTitle(cell, "REPUTACIÓN", boldFont);
+        double score = professional.getReputationScore() != null ? professional.getReputationScore() : 0.0;
+        String stars = "★".repeat((int) Math.round(score)) + "☆".repeat(5 - (int) Math.round(score));
+        cell.add(new Paragraph(stars).setFontSize(18).setFontColor(STAR_YELLOW).setMarginBottom(0));
+        cell.add(new Paragraph(String.format("%.1f / 5.0", score)).setFont(boldFont).setFontSize(12).setMarginBottom(0));
+        cell.add(new Paragraph(professional.getTotalRatings() + " reseñas").setFont(regularFont).setFontSize(8).setFontColor(SECONDARY_COLOR));
     }
 
-    private void addNameHeader(Cell cell, AppUser professional, PdfFont boldFont, PdfFont regularFont) {
-        Paragraph name = new Paragraph(professional.getName().toUpperCase())
-                .setFont(boldFont)
-                .setFontSize(26)
-                .setFontColor(DARK_GRAY)
-                .setMarginBottom(5);
-        cell.add(name);
-
-        if (professional.getProfessionalTitle() != null && !professional.getProfessionalTitle().isEmpty()) {
-            Paragraph title = new Paragraph(professional.getProfessionalTitle())
-                    .setFont(regularFont)
-                    .setFontSize(14)
-                    .setFontColor(PRIMARY_COLOR)
-                    .setMarginBottom(15);
-            cell.add(title);
-        } else {
-            cell.add(new Paragraph("\n").setMarginBottom(10));
-        }
-
-        addDividerLine(cell);
+    private void addContentSectionTitle(Cell cell, String title, PdfFont boldFont) {
+        cell.add(new Paragraph(title).setFont(boldFont).setFontSize(13).setFontColor(TEXT_DARK)
+                .setBorderLeft(new SolidBorder(PRIMARY_COLOR, 3)).setPaddingLeft(10).setMarginBottom(15).setMarginTop(10));
     }
 
-    private void addRightSectionTitle(Cell cell, String title, PdfFont boldFont) {
-        Paragraph titleP = new Paragraph(title)
-                .setFont(boldFont)
-                .setFontSize(13)
-                .setFontColor(DARK_GRAY)
-                .setMarginTop(10)
-                .setMarginBottom(10);
-        cell.add(titleP);
-
-        addDividerLine(cell);
-    }
-
-    private void addWorkHistoryModern(Cell cell, List<WorkHistory> workHistory, PdfFont boldFont, PdfFont regularFont) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMM yyyy");
-
-        for (int i = 0; i < workHistory.size(); i++) {
-            WorkHistory work = workHistory.get(i);
-
-            Paragraph position = new Paragraph(work.getPosition())
-                    .setFont(boldFont)
-                    .setFontSize(12)
-                    .setFontColor(DARK_GRAY)
-                    .setMarginBottom(3);
-            cell.add(position);
-
-            String startDate = work.getStartDate().format(formatter);
-            String endDate = work.getEndDate() != null ? work.getEndDate().format(formatter) : "Presente";
-
-            Paragraph companyAndDates = new Paragraph()
-                    .add(new Text(work.getBusinessName())
-                            .setFont(regularFont)
-                            .setFontSize(10)
-                            .setFontColor(PRIMARY_COLOR)
-                            .setBold())
-                    .add(new Text("  •  " + startDate + " - " + endDate)
-                            .setFont(regularFont)
-                            .setFontSize(9)
-                            .setFontColor(SECONDARY_COLOR))
-                    .setMarginBottom(5);
-            cell.add(companyAndDates);
-
-            if (work.getDescription() != null && !work.getDescription().isEmpty()) {
-                String[] responsibilities = work.getDescription().split("[,\n]");
-                for (String resp : responsibilities) {
-                    String trimmed = resp.trim();
-                    if (!trimmed.isEmpty()) {
-                        Paragraph bullet = new Paragraph("• " + trimmed)
-                                .setFont(regularFont)
-                                .setFontSize(9)
-                                .setFontColor(DARK_GRAY)
-                                .setMarginLeft(10)
-                                .setMarginBottom(2);
-                        cell.add(bullet);
-                    }
-                }
-            }
-
-            if (work.getIsActive()) {
-                Paragraph activeBadge = new Paragraph("✓ Actualmente trabajando aquí")
-                        .setFont(regularFont)
-                        .setFontSize(8)
-                        .setFontColor(new DeviceRgb(34, 197, 94))
-                        .setMarginTop(3);
-                cell.add(activeBadge);
-            }
-
-            if (i < workHistory.size() - 1) {
-                cell.add(new Paragraph("\n").setMarginBottom(5));
+    private void addTimelineExperience(Cell cell, List<WorkHistory> workHistory, PdfFont boldFont, PdfFont regularFont) {
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MMM yyyy");
+        for (WorkHistory work : workHistory) {
+            Paragraph p = new Paragraph().setMarginBottom(12);
+            p.add(new Text(work.getPosition() + "\n").setFont(boldFont).setFontSize(11).setFontColor(TEXT_DARK));
+            p.add(new Text(work.getBusinessName()).setFont(boldFont).setFontSize(10).setFontColor(PRIMARY_COLOR));
+            String dateRange = "  •  " + work.getStartDate().format(fmt) + " - " +
+                    (work.getEndDate() != null ? work.getEndDate().format(fmt) : "Actualidad");
+            p.add(new Text(dateRange).setFont(regularFont).setFontSize(9).setFontColor(SECONDARY_COLOR));
+            cell.add(p);
+            if (work.getDescription() != null && !work.getDescription().isBlank()) {
+                cell.add(new Paragraph(work.getDescription()).setFont(regularFont).setFontSize(9).setMarginLeft(10).setMarginBottom(15));
             }
         }
-    }
-
-    private void addDividerLine(Cell cell) {
-        Table line = new Table(1)
-                .setWidth(UnitValue.createPercentValue(100))
-                .setBorder(null)
-                .setMarginBottom(15);
-
-        Cell lineCell = new Cell()
-                .add(new Paragraph(""))
-                .setHeight(1)
-                .setBackgroundColor(new DeviceRgb(229, 231, 235))
-                .setBorder(null);
-
-        line.addCell(lineCell);
-        cell.add(line);
-    }
-
-    private void addFooterModern(Document document, PdfFont regularFont) {
-        Paragraph footer = new Paragraph("Generado con ProRate - Sistema de Calificación Profesional")
-                .setFont(regularFont)
-                .setFontSize(7)
-                .setFontColor(SECONDARY_COLOR)
-                .setTextAlignment(TextAlignment.CENTER)
-                .setMarginTop(10)
-                .setMarginBottom(10);
-        document.add(footer);
     }
 }

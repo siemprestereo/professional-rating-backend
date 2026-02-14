@@ -9,6 +9,7 @@ import com.example.waiter_rating.service.ProfessionalService;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
@@ -21,6 +22,7 @@ import java.io.IOException;
 import java.util.Optional;
 
 @Component
+@Slf4j
 public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
     private final AppUserRepo appUserRepo;
@@ -131,6 +133,8 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                                          HttpServletResponse response,
                                          AppUser user,
                                          UserRole role) throws IOException {
+
+        // Generamos el token (que ahora durará 15 días según tu properties)
         String token = jwtService.generateToken(
                 user.getId(),
                 role.name(),
@@ -138,24 +142,21 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                 user.getName()
         );
 
-        System.out.println("🔑 JWT generado para " + role + ": " + user.getEmail());
+        // Cambiamos System.out por loggers (más profesional y seguro)
+        log.info("Sesión iniciada exitosamente para el usuario con email: {}", user.getEmail());
 
         String redirectUrl;
         if (role == UserRole.PROFESSIONAL) {
             boolean hasCompleteProfile = user.getCv() != null;
+            String path = hasCompleteProfile ? "/professional-dashboard" : "/professional-register";
 
-            if (hasCompleteProfile) {
-                redirectUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/professional-dashboard")
-                        .queryParam("token", token)
-                        .build()
-                        .toUriString();
-            } else {
-                redirectUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/professional-register")
-                        .queryParam("step", "complete-profile")
-                        .queryParam("token", token)
-                        .build()
-                        .toUriString();
+            UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(frontendUrl + path)
+                    .queryParam("token", token);
+
+            if (!hasCompleteProfile) {
+                builder.queryParam("step", "complete-profile");
             }
+            redirectUrl = builder.build().toUriString();
         } else {
             redirectUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/client-dashboard")
                     .queryParam("token", token)
@@ -163,7 +164,6 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                     .toUriString();
         }
 
-        System.out.println("🔄 Redirigiendo a: " + redirectUrl);
         getRedirectStrategy().sendRedirect(request, response, redirectUrl);
     }
 }
