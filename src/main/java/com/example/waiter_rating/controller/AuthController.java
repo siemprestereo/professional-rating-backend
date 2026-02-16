@@ -34,8 +34,8 @@ public class AuthController {
 
     public AuthController(AppUserRepo appUserRepo,
                           PasswordEncoder passwordEncoder,
-                          CvRepo cvRepo, 
-                          RatingRepo ratingRepo, 
+                          CvRepo cvRepo,
+                          RatingRepo ratingRepo,
                           QrTokenRepo qrCodeRepo,
                           JwtService jwtService) {
         this.appUserRepo = appUserRepo;
@@ -155,13 +155,28 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("message", "Logout exitoso"));
     }
 
+    /**
+     * Eliminar cuenta — SIEMPRE usa el userId del token JWT.
+     * El {userId} del path se valida contra el token para evitar IDOR.
+     */
     @DeleteMapping("/delete-account/{userId}")
     public ResponseEntity<?> deleteAccount(@PathVariable Long userId, HttpServletRequest request) {
-        try {
-            Long authenticatedUserId = (Long) request.getAttribute("userId");
-            Long userToDelete = authenticatedUserId != null ? authenticatedUserId : userId;
+        Long authenticatedUserId = (Long) request.getAttribute("userId");
 
-            Optional<AppUser> userOpt = appUserRepo.findById(userToDelete);
+        // SEGURIDAD: Si no hay usuario autenticado, rechazar inmediatamente
+        if (authenticatedUserId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "No autenticado"));
+        }
+
+        // SEGURIDAD: Solo permitir que el usuario elimine su propia cuenta
+        if (!authenticatedUserId.equals(userId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "No tenés permiso para eliminar esta cuenta"));
+        }
+
+        try {
+            Optional<AppUser> userOpt = appUserRepo.findById(authenticatedUserId);
 
             if (userOpt.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -175,17 +190,17 @@ public class AuthController {
                     cvRepo.delete(user.getCv());
                 }
 
-                List<Rating> ratings = ratingRepo.findByProfessionalId(userToDelete);
+                List<Rating> ratings = ratingRepo.findByProfessionalId(authenticatedUserId);
                 ratingRepo.deleteAll(ratings);
 
-                List<QrToken> qrCodes = qrCodeRepo.findByProfessionalId(userToDelete);
+                List<QrToken> qrCodes = qrCodeRepo.findByProfessionalId(authenticatedUserId);
                 qrCodeRepo.deleteAll(qrCodes);
             } else if (UserRole.CLIENT.equals(user.getActiveRole())) {
-                List<Rating> ratingsEmitted = ratingRepo.findByClientId(userToDelete);
+                List<Rating> ratingsEmitted = ratingRepo.findByClientId(authenticatedUserId);
                 ratingRepo.deleteAll(ratingsEmitted);
             }
 
-            appUserRepo.deleteById(userToDelete);
+            appUserRepo.deleteById(authenticatedUserId);
 
             return ResponseEntity.ok(Map.of("message", "Cuenta eliminada exitosamente"));
 
@@ -286,7 +301,7 @@ public class AuthController {
 
         if (updates.containsKey("phone")) user.setPhone(updates.get("phone"));
         if (updates.containsKey("location")) user.setLocation(updates.get("location"));
-        
+
         if ("PROFESSIONAL".equals(userType) && updates.containsKey("professionalTitle")) {
             user.setProfessionalTitle(updates.get("professionalTitle"));
         }
@@ -442,19 +457,33 @@ public class AuthController {
         ));
     }
 
+    /**
+     * Eliminar cuenta de cliente — SIEMPRE usa el userId del token JWT.
+     */
     @DeleteMapping("/delete-account-client/{userId}")
     public ResponseEntity<?> deleteClientAccount(@PathVariable Long userId, HttpServletRequest request) {
         Long authenticatedUserId = (Long) request.getAttribute("userId");
-        Long userToDelete = authenticatedUserId != null ? authenticatedUserId : userId;
 
-        Optional<AppUser> userOpt = appUserRepo.findById(userToDelete);
+        // SEGURIDAD: Si no hay usuario autenticado, rechazar inmediatamente
+        if (authenticatedUserId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "No autenticado"));
+        }
+
+        // SEGURIDAD: Solo permitir que el usuario elimine su propia cuenta
+        if (!authenticatedUserId.equals(userId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "No tenés permiso para eliminar esta cuenta"));
+        }
+
+        Optional<AppUser> userOpt = appUserRepo.findById(authenticatedUserId);
 
         if (userOpt.isEmpty() || !UserRole.CLIENT.equals(userOpt.get().getActiveRole())) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "Cliente no encontrado"));
         }
 
-        appUserRepo.deleteById(userToDelete);
+        appUserRepo.deleteById(authenticatedUserId);
 
         return ResponseEntity.ok(Map.of("message", "Cuenta eliminada exitosamente"));
     }
