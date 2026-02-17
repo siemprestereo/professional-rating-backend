@@ -51,3 +51,4 @@ build/
 # Temporary files
 *.tmp
 *.temp
+*.backup

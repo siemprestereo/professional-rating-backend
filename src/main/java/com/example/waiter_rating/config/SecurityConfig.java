@@ -50,11 +50,8 @@ public class SecurityConfig {
                                 "/login/oauth2/**"
                         ).permitAll()
 
-                        // Auth endpoints para meseros (registro/login)
+                        // Auth endpoints (registro/login)
                         .requestMatchers("/api/auth/**").permitAll()
-
-                        // Perfiles públicos de meseros (para empleadores)
-                        .requestMatchers(HttpMethod.GET, "/api/waiters/*/public").permitAll()
 
                         // QRs públicos (para escanear y resolver)
                         .requestMatchers("/qr/**", "/api/qr/resolve/**").permitAll()

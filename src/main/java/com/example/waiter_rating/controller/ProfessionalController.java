@@ -8,6 +8,8 @@ import com.example.waiter_rating.model.UserRole;
 import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.service.ProfessionalService;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -20,6 +22,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
+@Slf4j
 @RequestMapping("/api/professionals")
 public class ProfessionalController {
 
@@ -40,17 +43,13 @@ public class ProfessionalController {
     @GetMapping("/search")
     public ResponseEntity<?> searchProfessionals(@RequestParam String query) {
         try {
-            System.out.println("🔍 Búsqueda: " + query);
-
             if (query == null || query.trim().isEmpty()) {
                 return ResponseEntity.ok(List.of());
             }
 
             String searchTerm = query.toLowerCase().trim();
 
-            List<AppUser> professionals = appUserRepo.findAll().stream()
-                    .filter(p -> UserRole.PROFESSIONAL.equals(p.getActiveRole()))
-                    .filter(p -> p.getSearchable() != null && p.getSearchable())
+            List<AppUser> professionals = appUserRepo.findSearchableProfessionals().stream()
                     .filter(p -> p.getWorkHistory() != null &&
                             p.getWorkHistory().stream().anyMatch(wh -> wh.getIsActive()))
                     .filter(p -> {
@@ -70,8 +69,6 @@ public class ProfessionalController {
                     })
                     .collect(Collectors.toList());
 
-            System.out.println("✅ Encontrados: " + professionals.size() + " profesionales");
-
             List<Map<String, Object>> response = professionals.stream()
                     .map(this::toSearchResponse)
                     .collect(Collectors.toList());
@@ -79,32 +76,20 @@ public class ProfessionalController {
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            System.err.println("❌ Error en búsqueda: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Error en búsqueda: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Error en búsqueda: " + e.getMessage()));
         }
     }
 
+
     @GetMapping("/search/top")
     public ResponseEntity<?> getTopProfessionals() {
         try {
-            System.out.println("🌟 Obteniendo top profesionales");
-
-            List<AppUser> topProfessionals = appUserRepo.findAll().stream()
-                    .filter(p -> UserRole.PROFESSIONAL.equals(p.getActiveRole()))
-                    .filter(p -> p.getSearchable() != null && p.getSearchable())
+            List<AppUser> topProfessionals = appUserRepo.findTopProfessionals(PageRequest.of(0, 20)).stream()
                     .filter(p -> p.getWorkHistory() != null &&
                             p.getWorkHistory().stream().anyMatch(wh -> wh.getIsActive()))
-                    .filter(p -> p.getReputationScore() != null && p.getReputationScore() > 0)
-                    .sorted((p1, p2) -> Double.compare(
-                            p2.getReputationScore() != null ? p2.getReputationScore() : 0.0,
-                            p1.getReputationScore() != null ? p1.getReputationScore() : 0.0
-                    ))
-                    .limit(20)
                     .collect(Collectors.toList());
-
-            System.out.println("✅ Top profesionales: " + topProfessionals.size());
 
             List<Map<String, Object>> response = topProfessionals.stream()
                     .map(this::toSearchResponse)
@@ -113,8 +98,7 @@ public class ProfessionalController {
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            System.err.println("❌ Error obteniendo top: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Error obteniendo top: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Error obteniendo top: " + e.getMessage()));
         }
