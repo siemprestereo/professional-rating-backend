@@ -151,6 +151,11 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("error", "Email, password, nombre y tipo de profesión son requeridos"));
         }
 
+        String passwordError = validatePassword(password);
+        if (passwordError != null) {
+            return ResponseEntity.badRequest().body(Map.of("error", passwordError));
+        }
+
         if (appUserRepo.findByEmail(email).isPresent()) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "El email ya está registrado"));
@@ -477,6 +482,11 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("error", "Email, password y nombre son requeridos"));
         }
 
+        String passwordError = validatePassword(password);
+        if (passwordError != null) {
+            return ResponseEntity.badRequest().body(Map.of("error", passwordError));
+        }
+
         if (appUserRepo.findByEmail(email).isPresent()) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "El email ya está registrado"));
@@ -573,5 +583,22 @@ public class AuthController {
         appUserRepo.deleteById(authenticatedUserId);
 
         return ResponseEntity.ok(Map.of("message", "Cuenta eliminada exitosamente"));
+    }
+
+    /**
+     * Valida que el password cumpla requisitos mínimos de seguridad.
+     * @return mensaje de error, o null si es válido.
+     */
+    private String validatePassword(String password) {
+        if (password.length() < 8) {
+            return "La contraseña debe tener al menos 8 caracteres";
+        }
+        if (!password.matches(".*[a-zA-Z].*")) {
+            return "La contraseña debe contener al menos una letra";
+        }
+        if (!password.matches(".*[0-9].*")) {
+            return "La contraseña debe contener al menos un número";
+        }
+        return null;
     }
 }
