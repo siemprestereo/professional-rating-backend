@@ -3,6 +3,9 @@ package com.example.waiter_rating.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Table(name = "cvs")
 @Getter
@@ -35,6 +38,10 @@ public class Cv {
     @Column(name = "total_ratings", nullable = false)
     @Builder.Default
     private Integer totalRatings = 0;
+
+    @OneToMany(mappedBy = "cv", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<ProfessionalZone> zones = new ArrayList<>();
 
     /**
      * Actualiza la reputación basándose en los ratings del Professional.

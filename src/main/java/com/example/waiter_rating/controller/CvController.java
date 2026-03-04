@@ -5,6 +5,7 @@ import com.example.waiter_rating.dto.request.WorkHistoryRequest;
 import com.example.waiter_rating.dto.response.CvExperienceItem;
 import com.example.waiter_rating.dto.response.CvPublicResponse;
 import com.example.waiter_rating.model.*;
+import com.example.waiter_rating.repository.ProfessionalZoneRepo;
 import com.example.waiter_rating.repository.RatingRepo;
 import com.example.waiter_rating.service.*;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,10 +30,12 @@ public class CvController {
     private final CertificationService certificationService;
     private final RatingRepo ratingRepo;
 
+    private final ProfessionalZoneRepo professionalZoneRepo;
+
     public CvController(CvService cvService, WorkHistoryService workHistoryService,
                         AuthService authService, PdfService pdfService,
                         EducationService educationService, CertificationService certificationService,
-                        RatingRepo ratingRepo) {
+                        RatingRepo ratingRepo, ProfessionalZoneRepo professionalZoneRepo) {
         this.cvService = cvService;
         this.workHistoryService = workHistoryService;
         this.authService = authService;
@@ -40,6 +43,7 @@ public class CvController {
         this.educationService = educationService;
         this.certificationService = certificationService;
         this.ratingRepo = ratingRepo;
+        this.professionalZoneRepo = professionalZoneRepo;
     }
 
     // ========== ENDPOINTS PARA EL PROFESSIONAL LOGUEADO (/me) ==========
@@ -84,7 +88,8 @@ public class CvController {
                         ? cv.getProfessional().getWorkHistory().stream().map(this::toItem).toList()
                         : List.of(),
                 "education", educationService.getEducationByProfessional(userId),
-                "certifications", certificationService.getCertificationsByProfessional(userId)
+                "certifications", certificationService.getCertificationsByProfessional(userId),
+                "zones", professionalZoneRepo.findByCvId(cv.getId())
         ));
     }
 
@@ -612,6 +617,98 @@ public class CvController {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    // ========== ENDPOINTS DE ZONAS DE TRABAJO ==========
+
+    @GetMapping("/{cvId}/zones")
+    public ResponseEntity<?> getZones(@PathVariable Long cvId, HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        String userType = (String) request.getAttribute("userType");
+
+        if (userId == null || !"PROFESSIONAL".equals(userType)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "No autorizado"));
+        }
+
+        Cv cv = cvService.getCvById(cvId);
+        if (!cv.getProfessional().getId().equals(userId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "No tenés permiso para ver estas zonas"));
+        }
+
+        return ResponseEntity.ok(professionalZoneRepo.findByCvId(cvId));
+    }
+
+    @PostMapping("/{cvId}/zones")
+    public ResponseEntity<?> addZone(
+            @PathVariable Long cvId,
+            @RequestBody Map<String, String> body,
+            HttpServletRequest request) {
+
+        Long userId = (Long) request.getAttribute("userId");
+        String userType = (String) request.getAttribute("userType");
+
+        if (userId == null || !"PROFESSIONAL".equals(userType)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "No autorizado"));
+        }
+
+        Cv cv = cvService.getCvById(cvId);
+        if (!cv.getProfessional().getId().equals(userId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "No tenés permiso para editar estas zonas"));
+        }
+
+        String provincia = body.get("provincia");
+        String zona = body.get("zona");
+
+        if (provincia == null || provincia.isBlank() || zona == null || zona.isBlank()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Provincia y zona son requeridas"));
+        }
+
+        // Verificar que no exista la misma zona ya cargada
+        boolean yaExiste = professionalZoneRepo.findByCvId(cvId).stream()
+                .anyMatch(z -> z.getZona().equalsIgnoreCase(zona) && z.getProvincia().equalsIgnoreCase(provincia));
+
+        if (yaExiste) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Esa zona ya está agregada"));
+        }
+
+        ProfessionalZone zone = ProfessionalZone.builder()
+                .cv(cv)
+                .provincia(provincia)
+                .zona(zona)
+                .build();
+
+        ProfessionalZone saved = professionalZoneRepo.save(zone);
+        return ResponseEntity.ok(saved);
+    }
+
+    @DeleteMapping("/{cvId}/zones/{zoneId}")
+    public ResponseEntity<?> deleteZone(
+            @PathVariable Long cvId,
+            @PathVariable Long zoneId,
+            HttpServletRequest request) {
+
+        Long userId = (Long) request.getAttribute("userId");
+        String userType = (String) request.getAttribute("userType");
+
+        if (userId == null || !"PROFESSIONAL".equals(userType)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "No autorizado"));
+        }
+
+        Cv cv = cvService.getCvById(cvId);
+        if (!cv.getProfessional().getId().equals(userId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "No tenés permiso"));
+        }
+
+        professionalZoneRepo.deleteById(zoneId);
+        return ResponseEntity.ok(Map.of("message", "Zona eliminada correctamente"));
     }
 
     // ========== MAPPERS ==========

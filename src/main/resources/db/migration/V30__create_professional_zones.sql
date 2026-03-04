@@ -1,0 +1,8 @@
+CREATE TABLE professional_zones (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    cv_id BIGINT NOT NULL,
+    provincia VARCHAR(100) NOT NULL,
+    zona VARCHAR(100) NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_zones_cv FOREIGN KEY (cv_id) REFERENCES cvs(id) ON DELETE CASCADE
+);
