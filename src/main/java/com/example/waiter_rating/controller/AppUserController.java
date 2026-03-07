@@ -6,11 +6,11 @@ import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.service.AppUserService;
 import com.example.waiter_rating.service.CloudinaryService;
+import com.example.waiter_rating.service.JwtService;
+import io.jsonwebtoken.Claims;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,13 +24,16 @@ public class AppUserController {
     private final AppUserService userService;
     private final CloudinaryService cloudinaryService;
     private final AppUserRepo appUserRepo;
+    private final JwtService jwtService;
 
     public AppUserController(AppUserService userService,
                              CloudinaryService cloudinaryService,
-                             AppUserRepo appUserRepo) {
+                             AppUserRepo appUserRepo,
+                             JwtService jwtService) {
         this.userService = userService;
         this.cloudinaryService = cloudinaryService;
         this.appUserRepo = appUserRepo;
+        this.jwtService = jwtService;
     }
 
     /** Obtener usuario por ID */
@@ -55,9 +58,13 @@ public class AppUserController {
     /** Paso 1: solicitar parámetros firmados para subir foto a Cloudinary */
     @PostMapping("/photo/sign")
     public ResponseEntity<Map<String, Object>> getUploadSignature(
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @RequestHeader("Authorization") String authHeader) {
         try {
-            AppUser user = appUserRepo.findByEmail(userDetails.getUsername())
+            String token = authHeader.substring(7);
+            Claims claims = jwtService.validateToken(token);
+            String email = claims.getSubject();
+
+            AppUser user = appUserRepo.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
             Map<String, Object> signedParams = cloudinaryService.generateSignedUploadParams(user.getId());
@@ -75,10 +82,14 @@ public class AppUserController {
     /** Paso 2: confirmar public_id luego de subir exitosamente a Cloudinary */
     @PutMapping("/photo")
     public ResponseEntity<Void> confirmPhoto(
-            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestHeader("Authorization") String authHeader,
             @RequestBody @Valid PhotoConfirmRequest request) {
         try {
-            AppUser user = appUserRepo.findByEmail(userDetails.getUsername())
+            String token = authHeader.substring(7);
+            Claims claims = jwtService.validateToken(token);
+            String email = claims.getSubject();
+
+            AppUser user = appUserRepo.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
             String photoUrl = cloudinaryService.verifyAndBuildUrl(user.getId(), request.getPublicId());
@@ -88,7 +99,7 @@ public class AppUserController {
             return ResponseEntity.ok().build();
 
         } catch (SecurityException e) {
-            log.warn("Manipulación de public_id por {}: {}", userDetails.getUsername(), e.getMessage());
+            log.warn("Manipulación de public_id: {}", e.getMessage());
             return ResponseEntity.status(403).build();
         } catch (Exception e) {
             log.error("Error confirmando foto: {}", e.getMessage());
