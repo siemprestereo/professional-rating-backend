@@ -81,7 +81,7 @@ public class AppUserController {
 
     /** Paso 2: confirmar public_id luego de subir exitosamente a Cloudinary */
     @PutMapping("/photo")
-    public ResponseEntity<Void> confirmPhoto(
+    public ResponseEntity<Map<String, Object>> confirmPhoto(
             @RequestHeader("Authorization") String authHeader,
             @RequestBody @Valid PhotoConfirmRequest request) {
         try {
@@ -96,14 +96,17 @@ public class AppUserController {
             userService.updateProfilePicture(user.getId(), photoUrl);
 
             log.info("Foto actualizada para user id: {}", user.getId());
-            return ResponseEntity.ok().build();
+            return ResponseEntity.ok(Map.of(
+                    "message", "Foto actualizada correctamente",
+                    "profilePicture", photoUrl
+            ));
 
         } catch (SecurityException e) {
             log.warn("Manipulación de public_id: {}", e.getMessage());
-            return ResponseEntity.status(403).build();
+            return ResponseEntity.status(403).body(Map.of("error", "Acceso no autorizado"));
         } catch (Exception e) {
             log.error("Error confirmando foto: {}", e.getMessage());
-            return ResponseEntity.internalServerError().build();
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }
 }

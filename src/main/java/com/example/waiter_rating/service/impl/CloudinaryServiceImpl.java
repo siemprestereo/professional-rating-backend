@@ -21,12 +21,10 @@ public class CloudinaryServiceImpl implements CloudinaryService {
     @Override
     public Map<String, Object> generateSignedUploadParams(Long userId) throws Exception {
         long timestamp = System.currentTimeMillis() / 1000L;
-        String folder = "profile-photos/" + userId;
-        String publicId = folder + "/avatar";
+        String publicId = "profile-photos/" + userId + "/avatar";
 
         Map<String, Object> params = new HashMap<>();
         params.put("timestamp", timestamp);
-        params.put("folder", folder);
         params.put("public_id", publicId);
         params.put("overwrite", true);
 
