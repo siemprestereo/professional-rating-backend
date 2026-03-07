@@ -47,12 +47,14 @@ public class CloudinaryServiceImpl implements CloudinaryService {
             throw new SecurityException("El public_id no pertenece al usuario autenticado");
         }
 
-        // Verifica que el recurso existe en Cloudinary
-        cloudinary.api().resource(publicId, ObjectUtils.emptyMap());
+        // Verifica que existe Y obtiene el version actual
+        Map resource = cloudinary.api().resource(publicId, ObjectUtils.emptyMap());
+        Long version = ((Number) resource.get("version")).longValue();
 
-        // El backend construye la URL, nunca el frontend
+        // Incluir version en la URL para invalidar caché
         return cloudinary.url()
                 .secure(true)
+                .version(version)
                 .transformation(new Transformation()
                         .width(400).height(400)
                         .crop("fill").gravity("face")
