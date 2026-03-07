@@ -212,6 +212,16 @@ public class AppUserServiceImpl implements AppUserService {
         log.info("Welcome email sent to: {}", user.getEmail());
     }
 
+    @Override
+    @Transactional
+    public void updateProfilePicture(Long userId, String photoUrl) {
+        AppUser user = repo.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con id: " + userId));
+        user.setProfilePicture(photoUrl);
+        repo.save(user);
+        log.info("Profile picture updated for user id: {}", userId);
+    }
+
     private AppUserResponse mapToResponse(AppUser user) {
         AppUserResponse response = new AppUserResponse();
         response.setId(user.getId());
@@ -222,6 +232,7 @@ public class AppUserServiceImpl implements AppUserService {
         response.setProfessionalTitle(user.getProfessionalTitle());
         response.setUserType(user.getUserType());
         response.setActiveRole(user.getActiveRole().name());
+        response.setProfilePicture(user.getProfilePicture());
         response.setCreatedAt(user.getCreatedAt());
         response.setUpdatedAt(user.getUpdatedAt());
         return response;

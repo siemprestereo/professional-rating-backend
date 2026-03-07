@@ -1,8 +1,16 @@
 package com.example.waiter_rating.controller;
 
+import com.example.waiter_rating.dto.request.PhotoConfirmRequest;
 import com.example.waiter_rating.dto.response.AppUserResponse;
+import com.example.waiter_rating.model.AppUser;
+import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.service.AppUserService;
+import com.example.waiter_rating.service.CloudinaryService;
+import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -10,22 +18,28 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
+@Slf4j
 public class AppUserController {
 
     private final AppUserService userService;
+    private final CloudinaryService cloudinaryService;
+    private final AppUserRepo appUserRepo;
 
-    public AppUserController(AppUserService userService) {
+    public AppUserController(AppUserService userService,
+                             CloudinaryService cloudinaryService,
+                             AppUserRepo appUserRepo) {
         this.userService = userService;
+        this.cloudinaryService = cloudinaryService;
+        this.appUserRepo = appUserRepo;
     }
 
-    /** Obtener usuario por ID (genérico - puede ser Client o Professional) */
+    /** Obtener usuario por ID */
     @GetMapping("/{id}")
     public ResponseEntity<AppUserResponse> getById(@PathVariable Long id) {
-        AppUserResponse response = userService.getById(id);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(userService.getById(id));
     }
 
-    /** Listar todos los usuarios (Clients y Professionals) */
+    /** Listar todos los usuarios */
     @GetMapping
     public ResponseEntity<List<AppUserResponse>> listAll() {
         return ResponseEntity.ok(userService.listAll());
@@ -33,8 +47,52 @@ public class AppUserController {
 
     /** Verificar roles del usuario autenticado */
     @GetMapping("/me/roles")
-    public ResponseEntity<Map<String, Object>> checkMyRoles(@RequestHeader("Authorization") String authHeader) {
-        Map<String, Object> roles = userService.checkUserRoles(authHeader);
-        return ResponseEntity.ok(roles);
+    public ResponseEntity<Map<String, Object>> checkMyRoles(
+            @RequestHeader("Authorization") String authHeader) {
+        return ResponseEntity.ok(userService.checkUserRoles(authHeader));
+    }
+
+    /** Paso 1: solicitar parámetros firmados para subir foto a Cloudinary */
+    @PostMapping("/photo/sign")
+    public ResponseEntity<Map<String, Object>> getUploadSignature(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            AppUser user = appUserRepo.findByEmail(userDetails.getUsername())
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+            Map<String, Object> signedParams = cloudinaryService.generateSignedUploadParams(user.getId());
+            return ResponseEntity.ok(signedParams);
+
+        } catch (SecurityException e) {
+            log.warn("Acceso no autorizado en photo/sign: {}", e.getMessage());
+            return ResponseEntity.status(403).build();
+        } catch (Exception e) {
+            log.error("Error generando firma de upload: {}", e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /** Paso 2: confirmar public_id luego de subir exitosamente a Cloudinary */
+    @PutMapping("/photo")
+    public ResponseEntity<Void> confirmPhoto(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody @Valid PhotoConfirmRequest request) {
+        try {
+            AppUser user = appUserRepo.findByEmail(userDetails.getUsername())
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+            String photoUrl = cloudinaryService.verifyAndBuildUrl(user.getId(), request.getPublicId());
+            userService.updateProfilePicture(user.getId(), photoUrl);
+
+            log.info("Foto actualizada para user id: {}", user.getId());
+            return ResponseEntity.ok().build();
+
+        } catch (SecurityException e) {
+            log.warn("Manipulación de public_id por {}: {}", userDetails.getUsername(), e.getMessage());
+            return ResponseEntity.status(403).build();
+        } catch (Exception e) {
+            log.error("Error confirmando foto: {}", e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
     }
 }
