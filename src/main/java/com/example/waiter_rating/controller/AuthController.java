@@ -66,7 +66,8 @@ public class AuthController {
                 "name", safe(user.getName()),
                 "phone", safe(user.getPhone()),
                 "location", safe(user.getLocation()),
-                "profilePicture", safe(user.getProfilePicture())
+                "profilePicture", safe(user.getProfilePicture()),
+                "termsAccepted", user.getTermsAccepted() != null && user.getTermsAccepted()
         );
     }
 
@@ -74,17 +75,18 @@ public class AuthController {
         double reputationScore = user.getReputationScore() != null ? user.getReputationScore() : 0.0;
         int totalRatings = user.getTotalRatings() != null ? user.getTotalRatings() : 0;
 
-        return Map.of(
-                "id", user.getId(),
-                "email", safe(user.getEmail()),
-                "name", safe(user.getName()),
-                "phone", safe(user.getPhone()),
-                "location", safe(user.getLocation()),
-                "professionalTitle", safe(user.getProfessionalTitle()),
-                "professionType", user.getProfessionType() != null ? user.getProfessionType().name() : "",
-                "profilePicture", safe(user.getProfilePicture()),
-                "reputationScore", reputationScore,
-                "totalRatings", totalRatings
+        return Map.ofEntries(
+                Map.entry("id", user.getId()),
+                Map.entry("email", safe(user.getEmail())),
+                Map.entry("name", safe(user.getName())),
+                Map.entry("phone", safe(user.getPhone())),
+                Map.entry("location", safe(user.getLocation())),
+                Map.entry("professionalTitle", safe(user.getProfessionalTitle())),
+                Map.entry("professionType", user.getProfessionType() != null ? user.getProfessionType().name() : ""),
+                Map.entry("profilePicture", safe(user.getProfilePicture())),
+                Map.entry("reputationScore", reputationScore),
+                Map.entry("totalRatings", totalRatings),
+                Map.entry("termsAccepted", user.getTermsAccepted() != null && user.getTermsAccepted())
         );
     }
 
@@ -432,6 +434,30 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Error al eliminar cuenta: " + e.getMessage()));
         }
+    }
+
+    // ========== TÉRMINOS Y CONDICIONES ==========
+
+    @PutMapping("/accept-terms")
+    public ResponseEntity<?> acceptTerms(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "No autenticado"));
+        }
+
+        Optional<AppUser> userOpt = appUserRepo.findById(userId);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Usuario no encontrado"));
+        }
+
+        AppUser user = userOpt.get();
+        user.setTermsAccepted(true);
+        user.setTermsAcceptedAt(LocalDateTime.now());
+        appUserRepo.save(user);
+
+        log.info("Términos aceptados por user id: {}", userId);
+        return ResponseEntity.ok(Map.of("message", "Términos aceptados"));
     }
 
     @DeleteMapping("/delete-account-client/{userId}")

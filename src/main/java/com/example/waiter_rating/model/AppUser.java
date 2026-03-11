@@ -53,6 +53,13 @@ public class AppUser {
     @Column(length = 100)
     private String providerId;
 
+    @Column(name = "terms_accepted", nullable = false)
+    @Builder.Default
+    private Boolean termsAccepted = false;
+
+    @Column(name = "terms_accepted_at")
+    private LocalDateTime termsAcceptedAt;
+
     // ========== CONTROL DE ROL ==========
     @Enumerated(EnumType.STRING)
     @Column(name = "active_role", nullable = false, length = 20)
