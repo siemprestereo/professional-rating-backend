@@ -30,13 +30,16 @@ public class AuthController {
     private final JwtService jwtService;
     private final OAuthCodeTokenRepo oAuthCodeTokenRepo;
 
+    private final ProfessionalZoneRepo professionalZoneRepo;
+    private final FavoriteProfessionalRepo favoriteProfessionalRepo;
+
     public AuthController(AppUserRepo appUserRepo,
                           PasswordEncoder passwordEncoder,
                           CvRepo cvRepo,
                           RatingRepo ratingRepo,
                           QrTokenRepo qrCodeRepo,
                           JwtService jwtService,
-                          OAuthCodeTokenRepo oAuthCodeTokenRepo) {
+                          OAuthCodeTokenRepo oAuthCodeTokenRepo, ProfessionalZoneRepo professionalZoneRepo, FavoriteProfessionalRepo favoriteProfessionalRepo) {
         this.appUserRepo = appUserRepo;
         this.passwordEncoder = passwordEncoder;
         this.cvRepo = cvRepo;
@@ -44,6 +47,8 @@ public class AuthController {
         this.qrCodeRepo = qrCodeRepo;
         this.jwtService = jwtService;
         this.oAuthCodeTokenRepo = oAuthCodeTokenRepo;
+        this.professionalZoneRepo = professionalZoneRepo;
+        this.favoriteProfessionalRepo = favoriteProfessionalRepo;
     }
 
     // ========== HELPERS PRIVADOS ==========
@@ -422,11 +427,23 @@ public class AuthController {
             oAuthCodeTokenRepo.deleteAll(oAuthCodeTokenRepo.findByUserId(authenticatedUserId));
 
             if (UserRole.PROFESSIONAL.equals(user.getActiveRole())) {
-                if (user.getCv() != null) cvRepo.delete(user.getCv());
+                // Zones están en CV — borrar antes del CV
+                if (user.getCv() != null) {
+                    professionalZoneRepo.deleteByCvId(user.getCv().getId());
+                    cvRepo.delete(user.getCv());
+                }
                 ratingRepo.deleteAll(ratingRepo.findByProfessionalId(authenticatedUserId));
                 qrCodeRepo.deleteAll(qrCodeRepo.findByProfessionalId(authenticatedUserId));
+                // Eliminar este profesional de favoritos de otros clientes
+                favoriteProfessionalRepo.deleteAll(
+                        favoriteProfessionalRepo.findByProfessionalId(authenticatedUserId)
+                );
             } else if (UserRole.CLIENT.equals(user.getActiveRole())) {
                 ratingRepo.deleteAll(ratingRepo.findByClientId(authenticatedUserId));
+                // Eliminar favoritos guardados por este cliente
+                favoriteProfessionalRepo.deleteAll(
+                        favoriteProfessionalRepo.findByClientIdOrderBySavedAtDesc(authenticatedUserId)
+                );
             }
 
             appUserRepo.deleteById(authenticatedUserId);

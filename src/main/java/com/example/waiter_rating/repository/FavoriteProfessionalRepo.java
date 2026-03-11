@@ -22,4 +22,5 @@ public interface FavoriteProfessionalRepo extends JpaRepository<FavoriteProfessi
 
     // Eliminar favorito
     void deleteByClientIdAndProfessionalId(Long clientId, Long professionalId);
+    List<FavoriteProfessional> findByProfessionalId(Long professionalId);
 }

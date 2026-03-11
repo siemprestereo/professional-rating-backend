@@ -24,4 +24,6 @@ public interface OAuthCodeTokenRepo extends JpaRepository<OAuthCodeToken, Long> 
     int deleteExpiredOrUsed(LocalDateTime now);
 
     List<OAuthCodeToken> findByUserId(Long userId);
+
+
 }
