@@ -135,10 +135,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                                          AppUser user,
                                          UserRole role) throws IOException {
 
-        // Generar código único
         String code = UUID.randomUUID().toString().replace("-", "");
-
-        // Guardar en base de datos (expira en 60 segundos, un solo uso)
         OAuthCodeToken codeToken = new OAuthCodeToken(code, user, role);
         oAuthCodeTokenRepo.save(codeToken);
 
@@ -146,16 +143,12 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
 
         String redirectUrl;
         if (role == UserRole.PROFESSIONAL) {
-            boolean hasCompleteProfile = user.getCv() != null;
-            String path = hasCompleteProfile ? "/professional-dashboard" : "/professional-register";
-
-            UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(frontendUrl + path)
-                    .queryParam("code", code);
-
-            if (!hasCompleteProfile) {
-                builder.queryParam("step", "complete-profile");
-            }
-            redirectUrl = builder.build().toUriString();
+            boolean hasCV = user.getCv() != null;
+            String path = hasCV ? "/professional-dashboard" : "/edit-cv";
+            redirectUrl = UriComponentsBuilder.fromUriString(frontendUrl + path)
+                    .queryParam("code", code)
+                    .build()
+                    .toUriString();
         } else {
             redirectUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/client-dashboard")
                     .queryParam("code", code)
