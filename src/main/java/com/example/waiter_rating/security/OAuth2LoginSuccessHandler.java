@@ -68,8 +68,8 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             if (existingUser.isPresent()) {
                 AppUser user = existingUser.get();
 
-                // Si ya existe y tiene professional configurado
-                if (user.getProfessionType() != null) {
+                // Si alguna vez fue profesional (activeRole PROFESSIONAL o tiene professionType)
+                if (UserRole.PROFESSIONAL.equals(user.getActiveRole()) || user.getProfessionType() != null) {
                     log.info("Profesional existente autenticado: {}", user.getName());
                     user.setActiveRole(UserRole.PROFESSIONAL);
                     appUserRepo.save(user);
@@ -126,10 +126,6 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         }
     }
 
-    /**
-     * Genera un código temporal de un solo uso y redirige al frontend con ?code=xxx
-     * El frontend luego intercambia este código por el JWT real via POST /api/auth/exchange-code
-     */
     private void generateCodeAndRedirect(HttpServletRequest request,
                                          HttpServletResponse response,
                                          AppUser user,
