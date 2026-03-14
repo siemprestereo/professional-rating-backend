@@ -8,6 +8,7 @@ import com.example.waiter_rating.repository.*;
 import com.example.waiter_rating.service.JwtService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -419,7 +420,7 @@ public class AuthController {
     }
 
     // ========== ELIMINAR CUENTA ==========
-
+    @Transactional
     @DeleteMapping("/delete-account/{userId}")
     public ResponseEntity<?> deleteAccount(@PathVariable Long userId, HttpServletRequest request) {
         Long authenticatedUserId = (Long) request.getAttribute("userId");
