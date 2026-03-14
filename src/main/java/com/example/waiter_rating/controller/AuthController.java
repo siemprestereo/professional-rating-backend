@@ -259,21 +259,39 @@ public class AuthController {
 
         Optional<AppUser> userOpt = appUserRepo.findByEmail(email);
 
-        if (userOpt.isEmpty() || !UserRole.PROFESSIONAL.equals(userOpt.get().getActiveRole())) {
+        if (userOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Credenciales inválidas"));
         }
 
-        AppUser professional = userOpt.get();
+        AppUser user = userOpt.get();
 
-        if (!passwordEncoder.matches(password, professional.getPassword())) {
+        // Solo permitir PROFESSIONAL y ADMIN en este endpoint
+        if (!UserRole.PROFESSIONAL.equals(user.getActiveRole()) && !UserRole.ADMIN.equals(user.getActiveRole())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Credenciales inválidas"));
+        }
+
+        if (!passwordEncoder.matches(password, user.getPassword())) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Credenciales inválidas"));
         }
 
         String token = jwtService.generateToken(
-                professional.getId(), "PROFESSIONAL", professional.getEmail(), professional.getName()
+                user.getId(), user.getActiveRole().name(), user.getEmail(), user.getName()
         );
 
-        return ResponseEntity.ok(buildProfessionalResponse(professional));
+        if (UserRole.ADMIN.equals(user.getActiveRole())) {
+            return ResponseEntity.ok(Map.of(
+                    "token", token,
+                    "userType", "ADMIN",
+                    "id", user.getId(),
+                    "email", user.getEmail(),
+                    "name", user.getName()
+            ));
+        }
+
+        var response = new java.util.HashMap<>(buildProfessionalResponse(user));
+        response.put("token", token);
+        response.put("userType", "PROFESSIONAL");
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/login-client")
