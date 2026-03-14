@@ -11,5 +11,6 @@ public record AdminUserResponse(
         Boolean emailVerified,
         String authProvider,
         LocalDateTime createdAt,
-        Integer totalRatings
+        Integer totalRatings,
+        Double averageScoreGiven
 ) {}

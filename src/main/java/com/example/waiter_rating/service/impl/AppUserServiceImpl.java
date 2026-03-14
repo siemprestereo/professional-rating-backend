@@ -226,17 +226,26 @@ public class AppUserServiceImpl implements AppUserService {
     @Override
     public List<AdminUserResponse> listAllForAdmin() {
         return repo.findAll().stream()
-                .map(u -> new AdminUserResponse(
-                        u.getId(),
-                        u.getName(),
-                        u.getEmail(),
-                        u.getActiveRole().name(),
-                        u.getSuspended(),
-                        u.getEmailVerified(),
-                        u.getAuthProvider().name(),
-                        u.getCreatedAt(),
-                        u.getTotalRatings()
-                ))
+                .map(u -> {
+                    double avgGiven = u.getRatingsGiven() == null || u.getRatingsGiven().isEmpty()
+                            ? 0.0
+                            : u.getRatingsGiven().stream()
+                            .mapToInt(r -> r.getScore())
+                            .average()
+                            .orElse(0.0);
+                    return new AdminUserResponse(
+                            u.getId(),
+                            u.getName(),
+                            u.getEmail(),
+                            u.getActiveRole().name(),
+                            u.getSuspended(),
+                            u.getEmailVerified(),
+                            u.getAuthProvider().name(),
+                            u.getCreatedAt(),
+                            u.getTotalRatings(),
+                            avgGiven
+                    );
+                })
                 .toList();
     }
 
