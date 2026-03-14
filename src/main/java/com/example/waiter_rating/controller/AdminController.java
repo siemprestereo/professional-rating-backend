@@ -49,4 +49,11 @@ public class AdminController {
     public ResponseEntity<AdminStatsResponse> getStats() {
         return ResponseEntity.ok(userService.getAdminStats());
     }
+
+    @DeleteMapping("/users/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        userService.deleteByAdmin(id);
+        return ResponseEntity.ok().build();
+    }
+
 }

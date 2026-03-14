@@ -1,14 +1,14 @@
 package com.example.waiter_rating.service.impl;
 
 import com.example.waiter_rating.dto.response.AdminStatsResponse;
+import com.example.waiter_rating.dto.response.AdminUserResponse;
 import com.example.waiter_rating.dto.response.AppUserResponse;
 import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.model.PasswordResetToken;
+import com.example.waiter_rating.model.UserRole;
 import com.example.waiter_rating.model.VerificationToken;
 import com.example.waiter_rating.model.enums.AuthProvider;
-import com.example.waiter_rating.repository.AppUserRepo;
-import com.example.waiter_rating.repository.PasswordResetTokenRepository;
-import com.example.waiter_rating.repository.VerificationTokenRepository;
+import com.example.waiter_rating.repository.*;
 import com.example.waiter_rating.service.AppUserService;
 import com.example.waiter_rating.service.EmailService;
 import com.example.waiter_rating.service.JwtService;
@@ -18,7 +18,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.example.waiter_rating.dto.response.AdminUserResponse;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -29,35 +28,54 @@ public class AppUserServiceImpl implements AppUserService {
 
     private final AppUserRepo repo;
     private final JwtService jwtService;
-
     private final VerificationTokenRepository verificationTokenRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final EmailService emailService;
-
     private final PasswordEncoder passwordEncoder;
+    private final CvRepo cvRepo;
+    private final RatingRepo ratingRepo;
+    private final QrTokenRepo qrTokenRepo;
+    private final OAuthCodeTokenRepo oAuthCodeTokenRepo;
+    private final FavoriteProfessionalRepo favoriteProfessionalRepo;
+    private final ProfessionalZoneRepo professionalZoneRepo;
 
     @Autowired
-    public AppUserServiceImpl(AppUserRepo repo, JwtService jwtService, VerificationTokenRepository verificationTokenRepository, PasswordResetTokenRepository passwordResetTokenRepository, EmailService emailService, PasswordEncoder passwordEncoder) {
+    public AppUserServiceImpl(AppUserRepo repo,
+                              JwtService jwtService,
+                              VerificationTokenRepository verificationTokenRepository,
+                              PasswordResetTokenRepository passwordResetTokenRepository,
+                              EmailService emailService,
+                              PasswordEncoder passwordEncoder,
+                              CvRepo cvRepo,
+                              RatingRepo ratingRepo,
+                              QrTokenRepo qrTokenRepo,
+                              OAuthCodeTokenRepo oAuthCodeTokenRepo,
+                              FavoriteProfessionalRepo favoriteProfessionalRepo,
+                              ProfessionalZoneRepo professionalZoneRepo) {
         this.repo = repo;
         this.jwtService = jwtService;
         this.verificationTokenRepository = verificationTokenRepository;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
         this.emailService = emailService;
         this.passwordEncoder = passwordEncoder;
+        this.cvRepo = cvRepo;
+        this.ratingRepo = ratingRepo;
+        this.qrTokenRepo = qrTokenRepo;
+        this.oAuthCodeTokenRepo = oAuthCodeTokenRepo;
+        this.favoriteProfessionalRepo = favoriteProfessionalRepo;
+        this.professionalZoneRepo = professionalZoneRepo;
     }
 
     @Override
     public AppUserResponse getById(Long id) {
         AppUser user = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado con id: " + id));
-
         return mapToResponse(user);
     }
 
     @Override
     public List<AppUserResponse> listAll() {
-        List<AppUser> users = repo.findAll();
-        return users.stream()
+        return repo.findAll().stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -65,24 +83,15 @@ public class AppUserServiceImpl implements AppUserService {
     @Override
     public Map<String, Object> checkUserRoles(String authHeader) {
         try {
-            System.out.println("=== checkUserRoles START ===");
-
             String token = authHeader.substring(7);
             Claims claims = jwtService.validateToken(token);
             String email = claims.getSubject();
-            System.out.println("Email del token: " + email);
 
             AppUser user = repo.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-            // Con AppUser unificado, un usuario puede tener AMBOS roles configurados
-            // Solo necesitamos verificar si tiene los campos de Professional poblados
-            boolean hasClientRole = true; // Todos los usuarios pueden ser clientes
-            boolean hasProfessionalRole = user.getProfessionType() != null; // Solo si tiene profession type configurado
-
-            System.out.println("hasClientRole: " + hasClientRole);
-            System.out.println("hasProfessionalRole: " + hasProfessionalRole);
-            System.out.println("activeRole: " + user.getActiveRole());
+            boolean hasClientRole = true;
+            boolean hasProfessionalRole = user.getProfessionType() != null;
 
             Map<String, Object> response = new HashMap<>();
             response.put("hasClientRole", hasClientRole);
@@ -94,12 +103,8 @@ public class AppUserServiceImpl implements AppUserService {
                 response.put("nextAllowedSwitchDate", user.getNextAllowedRoleSwitchDate());
             }
 
-            System.out.println("Response: " + response);
-            System.out.println("=== checkUserRoles SUCCESS ===");
             return response;
         } catch (Exception e) {
-            System.err.println("=== checkUserRoles ERROR ===");
-            e.printStackTrace();
             throw new RuntimeException("Error verificando roles: " + e.getMessage());
         }
     }
@@ -107,13 +112,10 @@ public class AppUserServiceImpl implements AppUserService {
     @Override
     @Transactional
     public void createVerificationToken(AppUser user) {
-        // Eliminar tokens anteriores
         verificationTokenRepository.deleteByUser(user);
-
         String token = UUID.randomUUID().toString();
         VerificationToken verificationToken = new VerificationToken(token, user);
         verificationTokenRepository.save(verificationToken);
-
         emailService.sendVerificationEmail(user.getEmail(), user.getName(), token);
         log.info("Verification token created for user: {}", user.getEmail());
     }
@@ -158,13 +160,10 @@ public class AppUserServiceImpl implements AppUserService {
 
         if (userOpt.isEmpty()) {
             log.warn("Password reset requested for non-existent or OAuth user: {}", email);
-            // Por seguridad, no revelamos si el email existe
             return;
         }
 
         AppUser user = userOpt.get();
-
-        // Eliminar tokens anteriores
         passwordResetTokenRepository.deleteByUser(user);
 
         String token = UUID.randomUUID().toString();
@@ -249,6 +248,31 @@ public class AppUserServiceImpl implements AppUserService {
         user.setSuspended(!user.getSuspended());
         repo.save(user);
         log.info("Usuario {} -> suspended: {}", id, user.getSuspended());
+    }
+
+    @Override
+    @Transactional
+    public void deleteByAdmin(Long id) {
+        AppUser user = repo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con id: " + id));
+
+        oAuthCodeTokenRepo.deleteAll(oAuthCodeTokenRepo.findByUserId(id));
+
+        if (UserRole.PROFESSIONAL.equals(user.getActiveRole())) {
+            if (user.getCv() != null) {
+                professionalZoneRepo.deleteByCvId(user.getCv().getId());
+                cvRepo.delete(user.getCv());
+            }
+            ratingRepo.deleteAll(ratingRepo.findByProfessionalId(id));
+            qrTokenRepo.deleteAll(qrTokenRepo.findByProfessionalId(id));
+            favoriteProfessionalRepo.deleteAll(favoriteProfessionalRepo.findByProfessionalId(id));
+        } else if (UserRole.CLIENT.equals(user.getActiveRole())) {
+            ratingRepo.deleteAll(ratingRepo.findByClientId(id));
+            favoriteProfessionalRepo.deleteAll(favoriteProfessionalRepo.findByClientIdOrderBySavedAtDesc(id));
+        }
+
+        repo.deleteById(id);
+        log.info("Usuario {} eliminado por admin", id);
     }
 
     @Override

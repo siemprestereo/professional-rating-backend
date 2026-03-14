@@ -24,4 +24,5 @@ public interface AppUserService {
     List<AdminUserResponse> listAllForAdmin();
     void toggleSuspend(Long id);
     AdminStatsResponse getAdminStats();
+    void deleteByAdmin(Long id);
 }
