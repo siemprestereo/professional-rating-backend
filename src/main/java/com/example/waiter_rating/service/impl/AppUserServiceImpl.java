@@ -228,12 +228,20 @@ public class AppUserServiceImpl implements AppUserService {
     public List<AdminUserResponse> listAllForAdmin() {
         return repo.findAll().stream()
                 .map(u -> {
+                    int ratingsCount;
+                    if (UserRole.CLIENT.equals(u.getActiveRole())) {
+                        ratingsCount = u.getRatingsGiven() == null ? 0 : u.getRatingsGiven().size();
+                    } else {
+                        ratingsCount = u.getTotalRatings() == null ? 0 : u.getTotalRatings();
+                    }
+
                     double avgGiven = u.getRatingsGiven() == null || u.getRatingsGiven().isEmpty()
                             ? 0.0
                             : u.getRatingsGiven().stream()
                             .mapToInt(r -> r.getScore())
                             .average()
                             .orElse(0.0);
+
                     return new AdminUserResponse(
                             u.getId(),
                             u.getName(),
@@ -243,7 +251,7 @@ public class AppUserServiceImpl implements AppUserService {
                             u.getEmailVerified(),
                             u.getAuthProvider().name(),
                             u.getCreatedAt(),
-                            u.getTotalRatings(),
+                            ratingsCount,
                             avgGiven
                     );
                 })
