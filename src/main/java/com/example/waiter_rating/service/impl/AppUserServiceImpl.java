@@ -269,7 +269,6 @@ public class AppUserServiceImpl implements AppUserService {
 
         if (UserRole.PROFESSIONAL.equals(user.getActiveRole())) {
             if (user.getCv() != null) {
-                professionalZoneRepo.deleteByCvId(user.getCv().getId());
                 cvRepo.delete(user.getCv());
             }
             ratingRepo.deleteAll(ratingRepo.findByProfessionalId(id));

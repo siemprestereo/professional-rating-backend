@@ -448,7 +448,6 @@ public class AuthController {
             if (UserRole.PROFESSIONAL.equals(user.getActiveRole())) {
                 // Zones están en CV — borrar antes del CV
                 if (user.getCv() != null) {
-                    professionalZoneRepo.deleteByCvId(user.getCv().getId());
                     cvRepo.delete(user.getCv());
                 }
                 ratingRepo.deleteAll(ratingRepo.findByProfessionalId(authenticatedUserId));
