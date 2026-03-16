@@ -119,7 +119,7 @@ public class AppUser {
     private List<Rating> ratingsReceived = new ArrayList<>();
 
     // Ratings dados (solo para clients)
-    @OneToMany(mappedBy = "client", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "client", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @Builder.Default
     private List<Rating> ratingsGiven = new ArrayList<>();
 
