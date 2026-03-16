@@ -461,9 +461,12 @@ public class AuthController {
                         favoriteProfessionalRepo.findByProfessionalId(authenticatedUserId)
                 );
             } else if (UserRole.CLIENT.equals(user.getActiveRole())) {
+                log.info(">>> Anonimizando ratings del cliente {}", authenticatedUserId);
                 List<Rating> ratingsEmitidas = ratingRepo.findByClientId(authenticatedUserId);
+                log.info(">>> Ratings encontradas: {}", ratingsEmitidas.size());
                 ratingsEmitidas.forEach(r -> r.setClient(null));
                 ratingRepo.saveAll(ratingsEmitidas);
+                log.info(">>> Ratings anonimizadas OK");
 
                 favoriteProfessionalRepo.deleteAll(
                         favoriteProfessionalRepo.findByClientIdOrderBySavedAtDesc(authenticatedUserId)
