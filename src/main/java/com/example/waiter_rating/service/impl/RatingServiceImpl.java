@@ -81,7 +81,9 @@ public class RatingServiceImpl implements RatingService {
 
         Rating rating = Rating.builder()
                 .professional(professional)
+                .professionalName(professional.getName())     // ← snapshot
                 .business(business)
+                .businessName(business.getName())             // ← snapshot
                 .workHistory(workHistory)
                 .client(client)
                 .score(request.getScore())
@@ -111,7 +113,6 @@ public class RatingServiceImpl implements RatingService {
             throw new IllegalStateException("El QR no pertenece a un professional válido");
         }
 
-        // Validación del lugar de trabajo elegido por el cliente
         WorkHistory workHistory = workHistoryRepo.findById(request.getWorkHistoryId())
                 .orElseThrow(() -> new IllegalArgumentException("WorkHistory no encontrado"));
 
@@ -131,7 +132,9 @@ public class RatingServiceImpl implements RatingService {
 
         Rating rating = Rating.builder()
                 .professional(professional)
+                .professionalName(professional.getName())     // ← snapshot
                 .business(business)
+                .businessName(business.getName())             // ← snapshot
                 .workHistory(workHistory)
                 .client(client)
                 .score(request.getScore())
@@ -142,10 +145,7 @@ public class RatingServiceImpl implements RatingService {
                 .build();
 
         Rating saved = ratingRepo.save(rating);
-
-        // Se mantiene activo el token para permitir múltiples escaneos en la mesa (multiusuario)
         professionalService.updateProfessionalReputation(saved.getProfessional().getId());
-
         return saved;
     }
 
@@ -247,13 +247,14 @@ public class RatingServiceImpl implements RatingService {
     public List<Rating> getRatingsByWorkHistory(Long workHistoryId) {
         return ratingRepo.findByWorkHistoryId(workHistoryId);
     }
+
     @Override
     public List<AdminRatingResponse> listAllForAdmin() {
         return ratingRepo.findAll().stream()
                 .map(r -> new AdminRatingResponse(
                         r.getId(),
-                        r.getClient().getName(),
-                        r.getProfessional().getName(),
+                        r.getClient() != null ? r.getClient().getName() : "Cliente eliminado",
+                        r.getProfessional() != null ? r.getProfessional().getName() : r.getProfessionalName(),
                         r.getScore(),
                         r.getComment(),
                         r.getCreatedAt()
@@ -266,9 +267,13 @@ public class RatingServiceImpl implements RatingService {
     public void deleteByAdmin(Long id) {
         Rating rating = ratingRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Calificación no encontrada con id: " + id));
-        Long professionalId = rating.getProfessional().getId();
-        ratingRepo.delete(rating);
-        professionalService.updateProfessionalReputation(professionalId);
+        if (rating.getProfessional() != null) {
+            Long professionalId = rating.getProfessional().getId();
+            ratingRepo.delete(rating);
+            professionalService.updateProfessionalReputation(professionalId);
+        } else {
+            ratingRepo.delete(rating);
+        }
         log.info("Calificación {} eliminada por admin", id);
     }
 }

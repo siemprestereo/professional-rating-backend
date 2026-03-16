@@ -1,21 +1,18 @@
 package com.example.waiter_rating.controller;
 
-import com.example.waiter_rating.model.AppUser;
-import com.example.waiter_rating.model.Cv;
-import com.example.waiter_rating.model.OAuthCodeToken;
-import com.example.waiter_rating.model.ProfessionType;
-import com.example.waiter_rating.model.UserRole;
+import com.example.waiter_rating.model.*;
 import com.example.waiter_rating.repository.*;
 import com.example.waiter_rating.service.JwtService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -454,7 +451,12 @@ public class AuthController {
                         cvRepo.delete(cv);
                     }
                 }
-                ratingRepo.deleteAll(ratingRepo.findByProfessionalId(authenticatedUserId));
+
+                // Anonimizar ratings recibidas en lugar de borrarlas
+                List<Rating> ratingsRecibidos = ratingRepo.findByProfessionalId(authenticatedUserId);
+                ratingsRecibidos.forEach(r -> r.setProfessional(null));
+                ratingRepo.saveAll(ratingsRecibidos);
+
                 qrCodeRepo.deleteAll(qrCodeRepo.findByProfessionalId(authenticatedUserId));
                 favoriteProfessionalRepo.deleteAll(
                         favoriteProfessionalRepo.findByProfessionalId(authenticatedUserId)

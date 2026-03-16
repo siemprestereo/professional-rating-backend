@@ -212,20 +212,23 @@ public class RatingController {
         dto.setScore(r.getScore());
         dto.setComment(r.getComment());
 
-        // Professional info
-        dto.setProfessionalId(r.getProfessional().getId());
-        dto.setProfessionalName(r.getProfessional().getName());
-        dto.setProfessionType(r.getProfessional().getProfessionType());
+        // Professional info — usar snapshot si el profesional fue eliminado
+        if (r.getProfessional() != null) {
+            dto.setProfessionalId(r.getProfessional().getId());
+            dto.setProfessionalName(r.getProfessional().getName());
+            dto.setProfessionType(r.getProfessional().getProfessionType());
+        } else {
+            dto.setProfessionalId(null);
+            dto.setProfessionalName(r.getProfessionalName() != null ? r.getProfessionalName() : "Profesional eliminado");
+            dto.setProfessionType(null);
+        }
 
-        // AppUser info (Privacidad: solo primer nombre)
+        // Client info
         if (r.getClient() != null) {
             dto.setClientId(r.getClient().getId());
-
             String fullName = r.getClient().getName();
             if (fullName != null && !fullName.isBlank()) {
-                // Extraer solo el primer nombre
-                String firstName = fullName.trim().split("\\s+")[0];
-                dto.setClientName(firstName);
+                dto.setClientName(fullName.trim().split("\\s+")[0]);
             } else {
                 dto.setClientName("Usuario");
             }

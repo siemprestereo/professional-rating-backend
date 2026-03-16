@@ -3,11 +3,7 @@ package com.example.waiter_rating.service.impl;
 import com.example.waiter_rating.dto.response.AdminStatsResponse;
 import com.example.waiter_rating.dto.response.AdminUserResponse;
 import com.example.waiter_rating.dto.response.AppUserResponse;
-import com.example.waiter_rating.model.AppUser;
-import com.example.waiter_rating.model.PasswordResetToken;
-import com.example.waiter_rating.model.UserRole;
-import com.example.waiter_rating.model.Cv;
-import com.example.waiter_rating.model.VerificationToken;
+import com.example.waiter_rating.model.*;
 import com.example.waiter_rating.model.enums.AuthProvider;
 import com.example.waiter_rating.repository.*;
 import com.example.waiter_rating.service.AppUserService;
@@ -285,7 +281,12 @@ public class AppUserServiceImpl implements AppUserService {
                     cvRepo.delete(cv);
                 }
             }
-            ratingRepo.deleteAll(ratingRepo.findByProfessionalId(id));
+
+            // Anonimizar ratings recibidas en lugar de borrarlas
+            List<Rating> ratingsRecibidos = ratingRepo.findByProfessionalId(id);
+            ratingsRecibidos.forEach(r -> r.setProfessional(null));
+            ratingRepo.saveAll(ratingsRecibidos);
+
             qrTokenRepo.deleteAll(qrTokenRepo.findByProfessionalId(id));
             favoriteProfessionalRepo.deleteAll(favoriteProfessionalRepo.findByProfessionalId(id));
         } else if (UserRole.CLIENT.equals(user.getActiveRole())) {
