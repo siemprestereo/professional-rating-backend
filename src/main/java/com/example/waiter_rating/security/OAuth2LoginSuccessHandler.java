@@ -146,7 +146,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                     .build()
                     .toUriString();
         } else {
-            redirectUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/client-dashboard")
+            redirectUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/client-login")
                     .queryParam("code", code)
                     .build()
                     .toUriString();
