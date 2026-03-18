@@ -312,6 +312,7 @@ public class ProfessionalController {
             case HAIRDRESSER: return "Peluquero";
             case PLUMBER: return "Plomero";
             case CARPENTER: return "Carpintero";
+            case PILATES: return "Instructora de pilates";
             case MECHANIC: return "Mecánico";
             case CHEF: return "Chef";
             case BARISTA: return "Barista";

@@ -6,6 +6,8 @@ public enum ProfessionType {
     PLUMBER("Plomero/a"),
     PAINTER("Pintor/a"),
     CARPENTER("Carpintero/a"),
+
+    PILATES("Instructora de pilates"),
     HAIRDRESSER("Peluquero/a"),
     MECHANIC("Mecánico/a"),
     CLEANER("Personal de Limpieza"),
@@ -15,6 +17,8 @@ public enum ProfessionType {
     GARDENER("Jardinero/a"),
 
     BARISTA("Barista"),
+
+
 
     DRIVER("Conductor"),
     SECURITY("Personal de seguridad"),
