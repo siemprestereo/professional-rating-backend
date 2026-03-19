@@ -5,7 +5,6 @@ import com.example.waiter_rating.dto.request.RatingRequest;
 import com.example.waiter_rating.dto.response.RatingResponse;
 import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.model.Rating;
-import com.example.waiter_rating.model.enums.ReportStatus;
 import com.example.waiter_rating.repository.RatingReportRepo;
 import com.example.waiter_rating.service.AuthService;
 import com.example.waiter_rating.service.RatingService;
@@ -254,9 +253,8 @@ public class RatingController {
         dto.setUpdatedAt(r.getUpdatedAt());
         dto.setServiceDate(r.getServiceDate());
         dto.setCanEdit(r.canEditOrDelete());
-        dto.setHasPendingReport(
-                ratingReportRepo.existsByRatingIdAndStatus(r.getId(), ReportStatus.PENDING)
-        );
+        ratingReportRepo.findFirstByRatingIdOrderByCreatedAtDesc(r.getId())
+                .ifPresent(report -> dto.setReportStatus(report.getStatus().name()));
 
         return dto;
     }

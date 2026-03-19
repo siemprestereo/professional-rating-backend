@@ -14,4 +14,5 @@ public interface RatingReportRepo extends JpaRepository<RatingReport, Long> {
     Optional<RatingReport> findByRatingIdAndReporterId(Long ratingId, Long reporterId);
 
     boolean existsByRatingIdAndStatus(Long ratingId, ReportStatus status);
+    Optional<RatingReport> findFirstByRatingIdOrderByCreatedAtDesc(Long ratingId);
 }

@@ -39,5 +39,5 @@ public class RatingResponse {
     // Permisos
     private Boolean canEdit;
 
-    private Boolean hasPendingReport;
+    private String reportStatus; // null | "PENDING" | "APPROVED" | "REJECTED"
 }

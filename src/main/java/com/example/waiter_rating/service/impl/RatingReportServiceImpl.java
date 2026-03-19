@@ -54,7 +54,7 @@ public class RatingReportServiceImpl implements RatingReportService {
 
         // No puede denunciar dos veces la misma calificación
         if (reportRepo.existsByRatingIdAndReporterId(ratingId, reporterId)) {
-            throw new IllegalStateException("Ya denunciaste esta calificación anteriormente");
+            throw new IllegalStateException("Ya denunciaste esta calificación anteriormente, no podés volver a hacerlo");
         }
 
         RatingReport report = RatingReport.builder()
