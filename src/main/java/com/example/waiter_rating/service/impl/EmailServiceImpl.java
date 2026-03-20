@@ -1,8 +1,10 @@
 package com.example.waiter_rating.service.impl;
 
 
+import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.service.EmailService;
 import jakarta.mail.MessagingException;
+import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +13,8 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -112,6 +116,84 @@ public class EmailServiceImpl implements EmailService {
         } catch (MessagingException e) {
             log.error("Failed to send profession suggestion email from: {}", professionalEmail, e);
         }
+    }
+
+    @Override
+    @Async
+    public void sendAdminEmail(String toEmail, String toName, String subject, String body, String replyTo) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom(new InternetAddress(replyTo, "Calificalo"));
+            helper.setTo(toEmail);
+            helper.setReplyTo(replyTo);
+            helper.setSubject(subject);
+            helper.setText(buildAdminEmailTemplate(toName, body, replyTo), true);
+
+            mailSender.send(message);
+            log.info("Admin email sent to: {}", toEmail);
+        } catch (Exception e) {
+            log.error("Failed to send admin email to: {}", toEmail, e);
+        }
+    }
+
+    @Override
+    @Async
+    public void sendBroadcastEmail(List<AppUser> recipients, String subject, String body, String replyTo) {
+        int sent = 0;
+        for (AppUser user : recipients) {
+            try {
+                MimeMessage message = mailSender.createMimeMessage();
+                MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+                helper.setFrom(new InternetAddress(replyTo, "Calificalo"));
+                helper.setTo(user.getEmail());
+                helper.setReplyTo(replyTo);
+                helper.setSubject(subject);
+                helper.setText(buildAdminEmailTemplate(user.getName(), body, replyTo), true);
+
+                mailSender.send(message);
+                sent++;
+            } catch (Exception e) {
+                log.error("Failed to send broadcast email to: {}", user.getEmail(), e);
+            }
+        }
+        log.info("Broadcast email sent to {}/{} recipients", sent, recipients.size());
+    }
+
+    private String buildAdminEmailTemplate(String recipientName, String body, String replyTo) {
+        String bodyHtml = body.replace("\n", "<br>");
+        return """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.7; color: #333; margin: 0; padding: 0; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); color: white; padding: 28px 30px; border-radius: 10px 10px 0 0; }
+                    .content { background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; font-size: 15px; }
+                    .footer { background: #f8f9fa; padding: 18px 20px; text-align: center; font-size: 12px; color: #888; border-radius: 0 0 10px 10px; border: 1px solid #e0e0e0; border-top: none; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h2 style="margin:0; font-weight:300; font-size:22px;">Calificalo</h2>
+                    </div>
+                    <div class="content">
+                        <p>Hola %s,</p>
+                        <p>%s</p>
+                    </div>
+                    <div class="footer">
+                        <p>© 2025 Calificalo. Todos los derechos reservados.</p>
+                        <p>Podés responder este email a <a href="mailto:%s">%s</a></p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """.formatted(recipientName, bodyHtml, replyTo, replyTo);
     }
 
     private String buildProfessionSuggestionTemplate(String professionalName, String professionalEmail, String suggestion) {

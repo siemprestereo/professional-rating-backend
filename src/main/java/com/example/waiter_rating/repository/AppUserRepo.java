@@ -2,6 +2,7 @@ package com.example.waiter_rating.repository;
 
 
 import com.example.waiter_rating.model.AppUser;
+import com.example.waiter_rating.model.UserRole;
 import com.example.waiter_rating.model.enums.AuthProvider;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,6 +14,12 @@ import java.util.Optional;
 public interface AppUserRepo extends JpaRepository<AppUser, Long> {
     Optional<AppUser> findByEmail(String email);
     Optional<AppUser> findByEmailAndAuthProvider(String email, AuthProvider authProvider);
+
+    @Query("SELECT u FROM AppUser u WHERE u.suspended = false AND u.email IS NOT NULL")
+    List<AppUser> findAllActive();
+
+    @Query("SELECT u FROM AppUser u WHERE u.activeRole = :role AND u.suspended = false AND u.email IS NOT NULL")
+    List<AppUser> findActiveByRole(UserRole role);
 
     @Query("SELECT u FROM AppUser u WHERE u.activeRole = 'PROFESSIONAL' AND u.searchable = true")
     List<AppUser> findSearchableProfessionals();
