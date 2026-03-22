@@ -206,7 +206,7 @@ public class AppUserServiceImpl implements AppUserService {
 
     @Override
     public void sendWelcomeEmail(AppUser user) {
-        emailService.sendWelcomeEmail(user.getEmail(), user.getName());
+        emailService.sendWelcomeEmail(user.getEmail(), user.getName(), user.getActiveRole() != null ? user.getActiveRole().name() : "CLIENT");
         log.info("Welcome email sent to: {}", user.getEmail());
     }
 

@@ -66,8 +66,11 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     @Async
-    public void sendWelcomeEmail(String toEmail, String userName) {
-        send(defaultFrom, toEmail, "¡Bienvenido a Calificalo!", buildWelcomeEmailTemplate(userName));
+    public void sendWelcomeEmail(String toEmail, String userName, String role) {
+        String html = "PROFESSIONAL".equals(role)
+                ? buildWelcomeProfessionalEmailTemplate(userName)
+                : buildWelcomeEmailTemplate(userName);
+        send(defaultFrom, toEmail, "¡Bienvenido a Calificalo!", html);
         log.info("Welcome email sent to: {}", toEmail);
     }
 
@@ -241,6 +244,45 @@ public class EmailServiceImpl implements EmailService {
             </body>
             </html>
             """.formatted(userName, verificationUrl);
+    }
+
+    private String buildWelcomeProfessionalEmailTemplate(String userName) {
+        return """
+            <!DOCTYPE html>
+            <html>
+            <head><meta charset="UTF-8">
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                    .content { background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; }
+                    .footer { background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #666; border-radius: 0 0 10px 10px; }
+                    .button { display: inline-block; padding: 12px 30px; background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+                    .highlight { background: #f3f4f6; border-left: 4px solid #667eea; padding: 14px 18px; border-radius: 0 8px 8px 0; margin: 20px 0; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header"><h1>¡Bienvenido a Calificalo!</h1></div>
+                    <div class="content">
+                        <h2>Hola %s,</h2>
+                        <p>Tu perfil profesional fue creado exitosamente. A partir de ahora podés empezar a recibir calificaciones de tus clientes.</p>
+                        <div class="highlight">
+                            <strong>¿Qué podés hacer en Calificalo?</strong>
+                            <ul style="margin: 10px 0 0; padding-left: 20px;">
+                                <li>Recibir calificaciones y reseñas de tus clientes</li>
+                                <li>Armar tu CV digital con tu historial de calificaciones</li>
+                                <li>Mostrar tu reputación para conseguir más y mejores oportunidades laborales</li>
+                            </ul>
+                        </div>
+                        <p>Completá tu CV ahora para que tus clientes puedan encontrarte y calificarte.</p>
+                        <a href="%s/edit-cv" class="button">Completar mi CV</a>
+                    </div>
+                    <div class="footer"><p>© 2025 Calificalo. Todos los derechos reservados.</p></div>
+                </div>
+            </body>
+            </html>
+            """.formatted(userName, frontendUrl);
     }
 
     private String buildPasswordResetEmailTemplate(String userName, String resetUrl) {

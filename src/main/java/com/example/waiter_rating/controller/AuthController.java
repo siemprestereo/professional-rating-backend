@@ -212,7 +212,7 @@ public class AuthController {
                 .build();
 
         professional = appUserRepo.save(professional);
-        emailService.sendWelcomeEmail(professional.getEmail(), professional.getName());
+        emailService.sendWelcomeEmail(professional.getEmail(), professional.getName(), "PROFESSIONAL");
         appUserService.createVerificationToken(professional);
 
         String token = jwtService.generateToken(
@@ -259,7 +259,7 @@ public class AuthController {
                 .build();
 
         client = appUserRepo.save(client);
-        emailService.sendWelcomeEmail(client.getEmail(), client.getName());
+        emailService.sendWelcomeEmail(client.getEmail(), client.getName(), "CLIENT");
         appUserService.createVerificationToken(client);
 
         String token = jwtService.generateToken(
