@@ -5,11 +5,14 @@ import com.example.waiter_rating.dto.response.AdminStatsResponse;
 import com.example.waiter_rating.dto.response.AdminUserResponse;
 import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.model.BannedWord;
+import com.example.waiter_rating.model.ContactMessage;
+import com.example.waiter_rating.model.ContactMessageStatus;
 import com.example.waiter_rating.service.ProfanityFilterService;
 import com.example.waiter_rating.model.EmailLog;
 import com.example.waiter_rating.model.UserRole;
 import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.repository.BannedWordRepository;
+import com.example.waiter_rating.repository.ContactMessageRepo;
 import com.example.waiter_rating.repository.EmailLogRepository;
 import com.example.waiter_rating.repository.RatingRepo;
 import com.example.waiter_rating.service.AppUserService;
@@ -40,6 +43,7 @@ public class AdminController {
     private final EmailLogRepository emailLogRepo;
     private final ProfanityFilterService profanityFilter;
     private final com.example.waiter_rating.repository.RatingRepo ratingRepo;
+    private final ContactMessageRepo contactMessageRepo;
 
     private static final Set<String> ALLOWED_ALIASES = Set.of(
         "hola@calificalo.com.ar",
@@ -243,6 +247,34 @@ public class AdminController {
         AppUser user = appUserRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
         return ResponseEntity.ok(ratingService.getUserRatingsForAdmin(id, user.getActiveRole().name()));
+    }
+
+    // ========== CONTACT MESSAGES ==========
+
+    @GetMapping("/messages")
+    public ResponseEntity<List<ContactMessage>> listMessages() {
+        return ResponseEntity.ok(contactMessageRepo.findAllByOrderByCreatedAtDesc());
+    }
+
+    @PatchMapping("/messages/{id}/read")
+    public ResponseEntity<ContactMessage> markRead(@PathVariable Long id) {
+        ContactMessage cm = contactMessageRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Mensaje no encontrado"));
+        cm.setRead(true);
+        return ResponseEntity.ok(contactMessageRepo.save(cm));
+    }
+
+    @PatchMapping("/messages/{id}/resolve")
+    public ResponseEntity<ContactMessage> resolveMessage(@PathVariable Long id) {
+        ContactMessage cm = contactMessageRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Mensaje no encontrado"));
+        cm.setStatus(ContactMessageStatus.RESOLVED);
+        return ResponseEntity.ok(contactMessageRepo.save(cm));
+    }
+
+    @GetMapping("/messages/unread-count")
+    public ResponseEntity<Map<String, Long>> unreadCount() {
+        return ResponseEntity.ok(Map.of("count", contactMessageRepo.countByReadFalse()));
     }
 
 }

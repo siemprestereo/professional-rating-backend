@@ -1,5 +1,8 @@
 package com.example.waiter_rating.controller;
 
+import com.example.waiter_rating.model.ContactMessage;
+import com.example.waiter_rating.model.ContactMessageType;
+import com.example.waiter_rating.repository.ContactMessageRepo;
 import com.example.waiter_rating.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +20,7 @@ import java.util.Map;
 public class SuggestionController {
 
     private final EmailService emailService;
+    private final ContactMessageRepo contactMessageRepo;
 
     @PostMapping("/profession")
     public ResponseEntity<?> suggestProfession(
@@ -37,6 +41,13 @@ public class SuggestionController {
         String professionalName = body.getOrDefault("professionalName", professionalEmail);
 
         emailService.sendProfessionSuggestionEmail(professionalName, professionalEmail, suggestion.trim());
+
+        ContactMessage cm = new ContactMessage();
+        cm.setType(ContactMessageType.SUGGESTION);
+        cm.setSenderName(professionalName);
+        cm.setSenderEmail(professionalEmail);
+        cm.setMessage(suggestion.trim());
+        contactMessageRepo.save(cm);
 
         return ResponseEntity.ok(Map.of("message", "Sugerencia enviada. ¡Gracias!"));
     }
