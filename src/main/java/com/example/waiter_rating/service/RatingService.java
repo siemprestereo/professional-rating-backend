@@ -49,5 +49,6 @@ public interface RatingService {
     // Admin
     List<AdminRatingResponse> listAllForAdmin();
     void deleteByAdmin(Long id);
+    void clearCommentByAdmin(Long id);
 
 }

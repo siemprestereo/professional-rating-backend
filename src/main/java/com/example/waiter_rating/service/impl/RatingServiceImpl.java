@@ -287,4 +287,15 @@ public class RatingServiceImpl implements RatingService {
         }
         log.info("Calificación {} eliminada por admin", id);
     }
+
+    @Override
+    @Transactional
+    public void clearCommentByAdmin(Long id) {
+        Rating rating = ratingRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Calificación no encontrada con id: " + id));
+        rating.setComment(null);
+        rating.setUpdatedAt(LocalDateTime.now());
+        ratingRepo.save(rating);
+        log.info("Comentario de calificación {} eliminado por admin", id);
+    }
 }

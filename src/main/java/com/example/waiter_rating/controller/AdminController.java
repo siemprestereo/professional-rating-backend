@@ -67,6 +67,12 @@ public class AdminController {
         return ResponseEntity.ok().build();
     }
 
+    @PatchMapping("/ratings/{id}/clear-comment")
+    public ResponseEntity<Void> clearRatingComment(@PathVariable Long id) {
+        ratingService.clearCommentByAdmin(id);
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/stats")
     public ResponseEntity<AdminStatsResponse> getStats() {
         return ResponseEntity.ok(userService.getAdminStats());
