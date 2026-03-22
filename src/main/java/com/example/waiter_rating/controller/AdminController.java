@@ -5,9 +5,11 @@ import com.example.waiter_rating.dto.response.AdminStatsResponse;
 import com.example.waiter_rating.dto.response.AdminUserResponse;
 import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.model.BannedWord;
+import com.example.waiter_rating.model.EmailLog;
 import com.example.waiter_rating.model.UserRole;
 import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.repository.BannedWordRepository;
+import com.example.waiter_rating.repository.EmailLogRepository;
 import com.example.waiter_rating.service.AppUserService;
 import com.example.waiter_rating.service.EmailService;
 import com.example.waiter_rating.service.RatingService;
@@ -33,6 +35,7 @@ public class AdminController {
     private final EmailService emailService;
     private final AppUserRepo appUserRepo;
     private final BannedWordRepository bannedWordRepo;
+    private final EmailLogRepository emailLogRepo;
 
     private static final Set<String> ALLOWED_ALIASES = Set.of(
         "hola@calificalo.com.ar",
@@ -90,6 +93,17 @@ public class AdminController {
             return ResponseEntity.badRequest().body(Map.of("error", "Remitente no permitido"));
 
         emailService.sendAdminEmail(toEmail, toName, subject, message, replyTo);
+
+        emailLogRepo.save(EmailLog.builder()
+                .type("INDIVIDUAL")
+                .subject(subject)
+                .recipientEmail(toEmail)
+                .recipientName(toName)
+                .senderAlias(replyTo)
+                .bodyPreview(message.length() > 300 ? message.substring(0, 297) + "..." : message)
+                .recipientsCount(1)
+                .build());
+
         return ResponseEntity.ok(Map.of("message", "Email enviado"));
     }
 
@@ -113,7 +127,22 @@ public class AdminController {
         };
 
         emailService.sendBroadcastEmail(recipients, subject, message, replyTo);
+
+        emailLogRepo.save(EmailLog.builder()
+                .type("BROADCAST")
+                .subject(subject)
+                .targetRole(targetRole)
+                .senderAlias(replyTo)
+                .bodyPreview(message.length() > 300 ? message.substring(0, 297) + "..." : message)
+                .recipientsCount(recipients.size())
+                .build());
+
         return ResponseEntity.ok(Map.of("message", "Broadcast iniciado", "recipients", recipients.size()));
+    }
+
+    @GetMapping("/email/log")
+    public ResponseEntity<List<EmailLog>> getEmailLog() {
+        return ResponseEntity.ok(emailLogRepo.findTop100ByOrderBySentAtDesc());
     }
 
     // ========== BANNED WORDS ==========
