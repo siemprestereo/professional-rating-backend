@@ -1,0 +1,1 @@
+ALTER TABLE contact_messages CHANGE `read` is_read BOOLEAN NOT NULL DEFAULT FALSE;
