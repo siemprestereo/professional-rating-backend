@@ -76,9 +76,12 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     @Async
-    public void sendVerificationEmail(String toEmail, String userName, String token) {
+    public void sendVerificationEmail(String toEmail, String userName, String token, String role) {
         String verificationUrl = frontendUrl + "/verify-email?token=" + token;
-        send(defaultFrom, toEmail, "Verificá tu cuenta en Calificalo ✅", buildVerificationEmailTemplate(userName, verificationUrl));
+        String html = "PROFESSIONAL".equals(role)
+                ? buildVerificationProfessionalTemplate(userName, verificationUrl)
+                : buildVerificationClientTemplate(userName, verificationUrl);
+        send(defaultFrom, toEmail, "¡Bienvenido a Calificalo! Verificá tu cuenta ✅", html);
         log.info("Verification email sent to: {}", toEmail);
     }
 
@@ -214,7 +217,39 @@ public class EmailServiceImpl implements EmailService {
             """.formatted(userName, frontendUrl);
     }
 
-    private String buildVerificationEmailTemplate(String userName, String verificationUrl) {
+    private String buildVerificationClientTemplate(String userName, String verificationUrl) {
+        return """
+            <!DOCTYPE html>
+            <html>
+            <head><meta charset="UTF-8">
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background: linear-gradient(135deg, #10b981 0%%, #0d9488 100%%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                    .content { background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; }
+                    .footer { background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #666; border-radius: 0 0 10px 10px; }
+                    .button { display: inline-block; padding: 14px 36px; background: linear-gradient(135deg, #10b981 0%%, #0d9488 100%%); color: white; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold; font-size: 16px; }
+                    .note { background: #f0fdf4; border-left: 4px solid #10b981; padding: 14px 18px; margin: 20px 0; border-radius: 0 8px 8px 0; font-size: 13px; color: #065f46; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header"><h1 style="margin:0">¡Bienvenido a Calificalo!</h1></div>
+                    <div class="content">
+                        <h2>Hola %s,</h2>
+                        <p>Tu cuenta fue creada exitosamente. Con Calificalo podés calificar profesionales, ver tu historial de calificaciones y descubrir los profesionales mejor valorados.</p>
+                        <p>Solo falta un paso: verificá tu correo para activar tu cuenta.</p>
+                        <p style="text-align: center;"><a href="%s" class="button">Verificar mi cuenta</a></p>
+                        <div class="note"><strong>⏰ Este enlace expira en 24 horas.</strong> Si no te registraste en Calificalo, podés ignorar este correo.</div>
+                    </div>
+                    <div class="footer"><p>© 2025 Calificalo. Todos los derechos reservados.</p></div>
+                </div>
+            </body>
+            </html>
+            """.formatted(userName, verificationUrl);
+    }
+
+    private String buildVerificationProfessionalTemplate(String userName, String verificationUrl) {
         return """
             <!DOCTYPE html>
             <html>
@@ -225,19 +260,28 @@ public class EmailServiceImpl implements EmailService {
                     .header { background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
                     .content { background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; }
                     .footer { background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #666; border-radius: 0 0 10px 10px; }
-                    .button { display: inline-block; padding: 12px 30px; background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-                    .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; }
+                    .button { display: inline-block; padding: 14px 36px; background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); color: white; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold; font-size: 16px; }
+                    .highlight { background: #f3f4f6; border-left: 4px solid #667eea; padding: 14px 18px; border-radius: 0 8px 8px 0; margin: 20px 0; }
+                    .note { background: #faf5ff; border-left: 4px solid #764ba2; padding: 14px 18px; margin: 20px 0; border-radius: 0 8px 8px 0; font-size: 13px; color: #4c1d95; }
                 </style>
             </head>
             <body>
                 <div class="container">
-                    <div class="header"><h1>Verificá tu cuenta</h1></div>
+                    <div class="header"><h1 style="margin:0">¡Bienvenido a Calificalo!</h1></div>
                     <div class="content">
                         <h2>Hola %s,</h2>
-                        <p>Gracias por registrarte en Calificalo. Para completar tu registro, verificá tu correo electrónico.</p>
+                        <p>Tu perfil profesional fue creado exitosamente. A partir de ahora podés recibir calificaciones de tus clientes y construir tu reputación en la plataforma.</p>
+                        <div class="highlight">
+                            <strong>¿Qué podés hacer en Calificalo?</strong>
+                            <ul style="margin: 8px 0 0; padding-left: 20px;">
+                                <li>Recibir calificaciones y reseñas de tus clientes</li>
+                                <li>Armar tu CV digital con tu historial de calificaciones</li>
+                                <li>Mostrar tu reputación para conseguir más y mejores oportunidades laborales</li>
+                            </ul>
+                        </div>
+                        <p>Solo falta un paso: verificá tu correo para activar tu cuenta.</p>
                         <p style="text-align: center;"><a href="%s" class="button">Verificar mi cuenta</a></p>
-                        <div class="warning"><strong>⏰ Nota importante:</strong> Este enlace expirará en 24 horas.</div>
-                        <p>Si no te registraste en Calificalo, podés ignorar este correo.</p>
+                        <div class="note"><strong>⏰ Este enlace expira en 24 horas.</strong> Si no te registraste en Calificalo, podés ignorar este correo.</div>
                     </div>
                     <div class="footer"><p>© 2025 Calificalo. Todos los derechos reservados.</p></div>
                 </div>

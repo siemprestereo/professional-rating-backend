@@ -113,7 +113,8 @@ public class AppUserServiceImpl implements AppUserService {
         String token = UUID.randomUUID().toString();
         VerificationToken verificationToken = new VerificationToken(token, user);
         verificationTokenRepository.save(verificationToken);
-        emailService.sendVerificationEmail(user.getEmail(), user.getName(), token);
+        String role = user.getActiveRole() != null ? user.getActiveRole().name() : "CLIENT";
+        emailService.sendVerificationEmail(user.getEmail(), user.getName(), token, role);
         log.info("Verification token created for user: {}", user.getEmail());
     }
 
