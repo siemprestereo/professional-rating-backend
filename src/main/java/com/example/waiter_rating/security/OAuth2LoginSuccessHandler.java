@@ -5,6 +5,7 @@ import com.example.waiter_rating.model.OAuthCodeToken;
 import com.example.waiter_rating.model.UserRole;
 import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.repository.OAuthCodeTokenRepo;
+import com.example.waiter_rating.service.AppUserService;
 import com.example.waiter_rating.service.ClientService;
 import com.example.waiter_rating.service.ProfessionalService;
 import jakarta.servlet.ServletException;
@@ -31,6 +32,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
     private final OAuthCodeTokenRepo oAuthCodeTokenRepo;
     private final ClientService clientService;
     private final ProfessionalService professionalService;
+    private final AppUserService appUserService;
 
     @Value("${app.frontend.url}")
     private String frontendUrl;
@@ -38,11 +40,13 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
     public OAuth2LoginSuccessHandler(AppUserRepo appUserRepo,
                                      OAuthCodeTokenRepo oAuthCodeTokenRepo,
                                      ClientService clientService,
-                                     ProfessionalService professionalService) {
+                                     ProfessionalService professionalService,
+                                     AppUserService appUserService) {
         this.appUserRepo = appUserRepo;
         this.oAuthCodeTokenRepo = oAuthCodeTokenRepo;
         this.clientService = clientService;
         this.professionalService = professionalService;
+        this.appUserService = appUserService;
     }
 
     @Override
@@ -90,6 +94,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             // No existe, crear nuevo professional
             log.info("Creando nuevo profesional: {}", email);
             AppUser newProfessional = professionalService.findOrCreateFromGoogle(email, name, googleId, emailVerified);
+            appUserService.sendWelcomeEmail(newProfessional);
             generateCodeAndRedirect(request, response, newProfessional, UserRole.PROFESSIONAL);
             return;
         }
@@ -121,6 +126,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             // No existe, crear nuevo client
             log.info("Creando nuevo cliente: {}", email);
             AppUser newClient = clientService.findOrCreateFromGoogle(email, name, googleId, emailVerified);
+            appUserService.sendWelcomeEmail(newClient);
             generateCodeAndRedirect(request, response, newClient, UserRole.CLIENT);
             return;
         }
