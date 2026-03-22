@@ -253,11 +253,13 @@ public class RatingServiceImpl implements RatingService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Rating> getRatingsByWorkHistory(Long workHistoryId) {
         return ratingRepo.findByWorkHistoryId(workHistoryId);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<AdminRatingResponse> listAllForAdmin() {
         return ratingRepo.findAll().stream()
                 .map(r -> new AdminRatingResponse(

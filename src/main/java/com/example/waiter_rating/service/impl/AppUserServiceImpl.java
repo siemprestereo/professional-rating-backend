@@ -310,19 +310,19 @@ public class AppUserServiceImpl implements AppUserService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public AdminStatsResponse getAdminStats() {
         List<AppUser> all = repo.findAll();
-        return new AdminStatsResponse(
-                (long) all.size(),
-                all.stream().filter(AppUser::isProfessional).count(),
-                all.stream().filter(AppUser::isClient).count(),
-                all.stream().filter(AppUser::getSuspended).count(),
-                all.stream().mapToLong(u -> u.getTotalRatings()).sum(),
-                all.stream().filter(AppUser::isProfessional)
-                        .mapToDouble(AppUser::getReputationScore)
-                        .average()
-                        .orElse(0.0)
-        );
+        long professionals = 0, clients = 0, suspended = 0, totalRatings = 0;
+        double reputationSum = 0;
+        for (AppUser u : all) {
+            if (u.isProfessional()) { professionals++; reputationSum += u.getReputationScore(); }
+            else if (u.isClient()) clients++;
+            if (u.getSuspended()) suspended++;
+            totalRatings += u.getTotalRatings();
+        }
+        double avgReputation = professionals > 0 ? reputationSum / professionals : 0.0;
+        return new AdminStatsResponse((long) all.size(), professionals, clients, suspended, totalRatings, avgReputation);
     }
 
     private AppUserResponse mapToResponse(AppUser user) {

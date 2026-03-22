@@ -5,6 +5,7 @@ import com.example.waiter_rating.dto.response.AdminStatsResponse;
 import com.example.waiter_rating.dto.response.AdminUserResponse;
 import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.model.BannedWord;
+import com.example.waiter_rating.service.ProfanityFilterService;
 import com.example.waiter_rating.model.EmailLog;
 import com.example.waiter_rating.model.UserRole;
 import com.example.waiter_rating.repository.AppUserRepo;
@@ -36,6 +37,7 @@ public class AdminController {
     private final AppUserRepo appUserRepo;
     private final BannedWordRepository bannedWordRepo;
     private final EmailLogRepository emailLogRepo;
+    private final ProfanityFilterService profanityFilter;
 
     private static final Set<String> ALLOWED_ALIASES = Set.of(
         "hola@calificalo.com.ar",
@@ -160,6 +162,7 @@ public class AdminController {
         if (bannedWordRepo.existsByWordIgnoreCase(word.trim()))
             return ResponseEntity.badRequest().body(Map.of("error", "La palabra ya existe"));
         BannedWord saved = bannedWordRepo.save(BannedWord.builder().word(word.trim().toLowerCase()).build());
+        profanityFilter.evictCache();
         return ResponseEntity.ok(saved);
     }
 
@@ -167,6 +170,7 @@ public class AdminController {
     public ResponseEntity<Void> deleteBannedWord(@PathVariable Long id) {
         if (!bannedWordRepo.existsById(id)) return ResponseEntity.notFound().build();
         bannedWordRepo.deleteById(id);
+        profanityFilter.evictCache();
         return ResponseEntity.noContent().build();
     }
 
