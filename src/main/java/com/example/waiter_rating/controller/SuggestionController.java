@@ -4,8 +4,8 @@ import com.example.waiter_rating.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -20,8 +20,7 @@ public class SuggestionController {
 
     @PostMapping("/profession")
     public ResponseEntity<?> suggestProfession(
-            @RequestBody Map<String, String> body,
-            @AuthenticationPrincipal UserDetails userDetails
+            @RequestBody Map<String, String> body
     ) {
         String suggestion = body.get("suggestion");
 
@@ -33,7 +32,8 @@ public class SuggestionController {
             return ResponseEntity.badRequest().body(Map.of("error", "La sugerencia no puede superar los 100 caracteres"));
         }
 
-        String professionalEmail = userDetails.getUsername();
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String professionalEmail = authentication != null ? authentication.getName() : "desconocido";
         String professionalName = body.getOrDefault("professionalName", professionalEmail);
 
         emailService.sendProfessionSuggestionEmail(professionalName, professionalEmail, suggestion.trim());
