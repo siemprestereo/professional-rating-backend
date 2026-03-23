@@ -291,10 +291,6 @@ public class AppUserServiceImpl implements AppUserService {
         // Denuncias hechas por el usuario
         ratingReportRepo.deleteAll(ratingReportRepo.findByReporterId(id));
 
-        // Desvincular ratings sin cargar entidades en sesión (evita TransientObjectException con WorkHistory)
-        ratingRepo.nullifyClientByUserId(id);
-        ratingRepo.nullifyProfessionalByUserId(id);
-
         // Datos de profesional
         certificationRepo.deleteAll(certificationRepo.findByProfessionalId(id));
         educationRepo.deleteByProfessionalId(id);
