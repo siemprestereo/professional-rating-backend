@@ -83,6 +83,10 @@ public interface RatingRepo extends JpaRepository<Rating, Long> {
     @Query("UPDATE Rating r SET r.professional = null WHERE r.professional.id = :userId")
     void nullifyProfessionalByUserId(@Param("userId") Long userId);
 
+    @Modifying
+    @Query("UPDATE Rating r SET r.workHistory = null WHERE r.workHistory.id IN (SELECT wh.id FROM WorkHistory wh WHERE wh.professional.id = :professionalId)")
+    void nullifyWorkHistoryByProfessionalId(@Param("professionalId") Long professionalId);
+
     @Query("SELECT r FROM Rating r WHERE r.createdAt >= :since")
     List<Rating> findByCreatedAtAfter(@Param("since") java.time.LocalDateTime since);
 }

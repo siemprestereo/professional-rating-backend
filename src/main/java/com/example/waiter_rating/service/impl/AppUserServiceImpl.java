@@ -294,6 +294,7 @@ public class AppUserServiceImpl implements AppUserService {
         // Datos de profesional
         certificationRepo.deleteAll(certificationRepo.findByProfessionalId(id));
         educationRepo.deleteByProfessionalId(id);
+        ratingRepo.nullifyWorkHistoryByProfessionalId(id);
         workHistoryRepo.deleteByProfessionalId(id);
 
         if (user.getCv() != null) {
