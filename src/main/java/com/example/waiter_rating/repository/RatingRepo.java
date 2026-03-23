@@ -3,6 +3,7 @@ package com.example.waiter_rating.repository;
 import com.example.waiter_rating.model.Rating;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -73,6 +74,14 @@ public interface RatingRepo extends JpaRepository<Rating, Long> {
     List<Rating> findByClientIdOrderByCreatedAtDesc(Long clientId, Pageable pageable);
 
     List<Rating> findTop5ByOrderByCreatedAtDesc();
+
+    @Modifying
+    @Query("UPDATE Rating r SET r.client = null WHERE r.client.id = :userId")
+    void nullifyClientByUserId(@Param("userId") Long userId);
+
+    @Modifying
+    @Query("UPDATE Rating r SET r.professional = null WHERE r.professional.id = :userId")
+    void nullifyProfessionalByUserId(@Param("userId") Long userId);
 
     @Query("SELECT r FROM Rating r WHERE r.createdAt >= :since")
     List<Rating> findByCreatedAtAfter(@Param("since") java.time.LocalDateTime since);

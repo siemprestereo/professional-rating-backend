@@ -288,18 +288,17 @@ public class AppUserServiceImpl implements AppUserService {
         passwordResetTokenRepository.deleteByUser(user);
         oAuthCodeTokenRepo.deleteAll(oAuthCodeTokenRepo.findByUserId(id));
 
-        // Denuncias hechas por el usuario (aplica a cualquier rol)
+        // Denuncias hechas por el usuario
         ratingReportRepo.deleteAll(ratingReportRepo.findByReporterId(id));
 
-        // Ratings emitidas como cliente
-        List<Rating> ratingsEmitidas = ratingRepo.findByClientId(id);
-        ratingsEmitidas.forEach(r -> r.setClient(null));
-        ratingRepo.saveAll(ratingsEmitidas);
+        // Desvincular ratings sin cargar entidades en sesión (evita TransientObjectException con WorkHistory)
+        ratingRepo.nullifyClientByUserId(id);
+        ratingRepo.nullifyProfessionalByUserId(id);
 
         // Datos de profesional
         certificationRepo.deleteAll(certificationRepo.findByProfessionalId(id));
         educationRepo.deleteByProfessionalId(id);
-        workHistoryRepo.deleteAll(workHistoryRepo.findByProfessionalId(id));
+        workHistoryRepo.deleteByProfessionalId(id);
 
         if (user.getCv() != null) {
             Cv cv = cvRepo.findById(user.getCv().getId()).orElse(null);
@@ -309,10 +308,6 @@ public class AppUserServiceImpl implements AppUserService {
                 cvRepo.delete(cv);
             }
         }
-
-        List<Rating> ratingsRecibidos = ratingRepo.findByProfessionalId(id);
-        ratingsRecibidos.forEach(r -> r.setProfessional(null));
-        ratingRepo.saveAll(ratingsRecibidos);
 
         qrTokenRepo.deleteAll(qrTokenRepo.findByProfessionalId(id));
         favoriteProfessionalRepo.deleteAll(favoriteProfessionalRepo.findByProfessionalId(id));
