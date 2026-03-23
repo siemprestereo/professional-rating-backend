@@ -21,8 +21,14 @@ public class EmailServiceImpl implements EmailService {
     @Value("${resend.api-key}")
     private String apiKey;
 
-    @Value("${resend.from}")
-    private String defaultFrom;
+    @Value("${resend.from.hola}")
+    private String fromHola;
+
+    @Value("${resend.from.noresponder}")
+    private String fromNoresponder;
+
+    @Value("${resend.from.soporte}")
+    private String fromSoporte;
 
     @Value("${app.frontend.url}")
     private String frontendUrl;
@@ -70,7 +76,7 @@ public class EmailServiceImpl implements EmailService {
         String html = "PROFESSIONAL".equals(role)
                 ? buildWelcomeProfessionalEmailTemplate(userName)
                 : buildWelcomeEmailTemplate(userName);
-        send(defaultFrom, toEmail, "¡Bienvenido a Calificalo!", html);
+        send(fromHola, toEmail, "¡Bienvenido a Calificalo!", html);
         log.info("Welcome email sent to: {}", toEmail);
     }
 
@@ -81,7 +87,7 @@ public class EmailServiceImpl implements EmailService {
         String html = "PROFESSIONAL".equals(role)
                 ? buildVerificationProfessionalTemplate(userName, verificationUrl)
                 : buildVerificationClientTemplate(userName, verificationUrl);
-        send(defaultFrom, toEmail, "¡Bienvenido a Calificalo! Verificá tu cuenta ✅", html);
+        send(fromHola, toEmail, "¡Bienvenido a Calificalo! Verificá tu cuenta ✅", html);
         log.info("Verification email sent to: {}", toEmail);
     }
 
@@ -89,14 +95,14 @@ public class EmailServiceImpl implements EmailService {
     @Async
     public void sendPasswordResetEmail(String toEmail, String userName, String token) {
         String resetUrl = frontendUrl + "/reset-password?token=" + token;
-        send(defaultFrom, toEmail, "Recuperación de contraseña - Calificalo 🔐", buildPasswordResetEmailTemplate(userName, resetUrl));
+        send(fromNoresponder, toEmail, "Recuperación de contraseña - Calificalo 🔐", buildPasswordResetEmailTemplate(userName, resetUrl));
         log.info("Password reset email sent to: {}", toEmail);
     }
 
     @Override
     @Async
     public void sendProfessionSuggestionEmail(String professionalName, String professionalEmail, String suggestion) {
-        send(defaultFrom, suggestionsEmail, "Nueva sugerencia de profesión - Calificalo",
+        send(fromNoresponder, suggestionsEmail, "Nueva sugerencia de profesión - Calificalo",
                 buildProfessionSuggestionTemplate(suggestion, professionalName, professionalEmail));
         log.info("Profession suggestion email sent from: {}", professionalEmail);
     }
@@ -119,7 +125,7 @@ public class EmailServiceImpl implements EmailService {
             + "<p>¡Gracias por ayudarnos a mejorar la plataforma!</p>"
             + "<p style='color:#6b7280;font-size:0.9em'>El equipo de Calificalo</p>"
             + "</div>";
-        send(defaultFrom, toEmail, "¡Tu sugerencia fue agregada a Calificalo!", html);
+        send(fromSoporte, toEmail, "¡Tu sugerencia fue agregada a Calificalo!", html);
         log.info("Suggestion accepted email sent to: {}", toEmail);
     }
 
