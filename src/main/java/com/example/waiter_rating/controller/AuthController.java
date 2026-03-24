@@ -503,47 +503,11 @@ public class AuthController {
         }
 
         try {
-            Optional<AppUser> userOpt = appUserRepo.findById(authenticatedUserId);
-            if (userOpt.isEmpty()) {
+            if (!appUserRepo.existsById(authenticatedUserId)) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Usuario no encontrado"));
             }
 
-            AppUser user = userOpt.get();
-
-            oAuthCodeTokenRepo.deleteAll(oAuthCodeTokenRepo.findByUserId(authenticatedUserId));
-
-            if (UserRole.PROFESSIONAL.equals(user.getActiveRole())) {
-                if (user.getCv() != null) {
-                    Cv cv = cvRepo.findById(user.getCv().getId()).orElse(null);
-                    if (cv != null) {
-                        cv.getZones().clear();
-                        cvRepo.save(cv);
-                        cvRepo.delete(cv);
-                    }
-                }
-
-                List<Rating> ratingsRecibidos = ratingRepo.findByProfessionalId(authenticatedUserId);
-                ratingsRecibidos.forEach(r -> r.setProfessional(null));
-                ratingRepo.saveAll(ratingsRecibidos);
-
-                qrCodeRepo.deleteAll(qrCodeRepo.findByProfessionalId(authenticatedUserId));
-                favoriteProfessionalRepo.deleteAll(
-                        favoriteProfessionalRepo.findByProfessionalId(authenticatedUserId)
-                );
-            } else if (UserRole.CLIENT.equals(user.getActiveRole())) {
-                log.info(">>> Anonimizando ratings del cliente {}", authenticatedUserId);
-                List<Rating> ratingsEmitidas = ratingRepo.findByClientId(authenticatedUserId);
-                log.info(">>> Ratings encontradas: {}", ratingsEmitidas.size());
-                ratingsEmitidas.forEach(r -> r.setClient(null));
-                ratingRepo.saveAll(ratingsEmitidas);
-                log.info(">>> Ratings anonimizadas OK");
-
-                favoriteProfessionalRepo.deleteAll(
-                        favoriteProfessionalRepo.findByClientIdOrderBySavedAtDesc(authenticatedUserId)
-                );
-            }
-
-            appUserRepo.deleteById(authenticatedUserId);
+            appUserService.deleteByAdmin(authenticatedUserId);
             return ResponseEntity.ok(Map.of("message", "Cuenta eliminada exitosamente"));
 
         } catch (Exception e) {
@@ -591,20 +555,17 @@ public class AuthController {
                     .body(Map.of("error", "No tenés permiso para eliminar esta cuenta"));
         }
 
-        Optional<AppUser> userOpt = appUserRepo.findById(authenticatedUserId);
-        if (userOpt.isEmpty() || !UserRole.CLIENT.equals(userOpt.get().getActiveRole())) {
+        if (!appUserRepo.existsById(authenticatedUserId)) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Cliente no encontrado"));
         }
 
-        List<Rating> ratingsEmitidas = ratingRepo.findByClientId(authenticatedUserId);
-        ratingsEmitidas.forEach(r -> r.setClient(null));
-        ratingRepo.saveAll(ratingsEmitidas);
-
-        favoriteProfessionalRepo.deleteAll(
-                favoriteProfessionalRepo.findByClientIdOrderBySavedAtDesc(authenticatedUserId)
-        );
-
-        appUserRepo.deleteById(authenticatedUserId);
-        return ResponseEntity.ok(Map.of("message", "Cuenta eliminada exitosamente"));
+        try {
+            appUserService.deleteByAdmin(authenticatedUserId);
+            return ResponseEntity.ok(Map.of("message", "Cuenta eliminada exitosamente"));
+        } catch (Exception e) {
+            log.error("Error eliminando cuenta cliente {}: {}", authenticatedUserId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error al eliminar cuenta: " + e.getMessage()));
+        }
     }
 }
