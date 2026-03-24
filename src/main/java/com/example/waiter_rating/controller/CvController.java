@@ -581,9 +581,13 @@ public class CvController {
      * Ver CV público de un professional (PÚBLICO - para empleadores)
      */
     @GetMapping("/professional/{professionalId}")
-    public ResponseEntity<CvPublicResponse> getPublic(@PathVariable Long professionalId) {
-        Cv cv = cvService.getPublicCv(professionalId);
-        return ResponseEntity.ok(toPublicResponse(cv));
+    public ResponseEntity<?> getPublic(@PathVariable Long professionalId) {
+        try {
+            Cv cv = cvService.getPublicCv(professionalId);
+            return ResponseEntity.ok(toPublicResponse(cv));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     /**
