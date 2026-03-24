@@ -217,6 +217,8 @@ public class AuthController {
                 "id", professional.getId(),
                 "email", professional.getEmail(),
                 "name", professional.getName(),
+                "professionType", professional.getProfessionType() != null ? professional.getProfessionType() : "",
+                "professionalTitle", professional.getProfessionalTitle() != null ? professional.getProfessionalTitle() : "",
                 "reputationScore", 0.0,
                 "totalRatings", 0
         ));
