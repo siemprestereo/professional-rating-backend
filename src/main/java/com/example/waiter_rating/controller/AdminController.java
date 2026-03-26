@@ -93,6 +93,12 @@ public class AdminController {
         return ResponseEntity.ok().build();
     }
 
+    @PatchMapping("/users/{id}/verify-email")
+    public ResponseEntity<?> verifyEmail(@PathVariable Long id) {
+        userService.verifyEmailByAdmin(id);
+        return ResponseEntity.ok(Map.of("message", "Email verificado correctamente"));
+    }
+
     // ========== EMAIL ==========
 
     @PostMapping("/email/individual")

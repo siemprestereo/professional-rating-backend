@@ -25,4 +25,5 @@ public interface AppUserService {
     void toggleSuspend(Long id);
     AdminStatsResponse getAdminStats();
     void deleteByAdmin(Long id);
+    void verifyEmailByAdmin(Long id);
 }

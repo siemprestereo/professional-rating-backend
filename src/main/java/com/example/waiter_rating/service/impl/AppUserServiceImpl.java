@@ -315,6 +315,16 @@ public class AppUserServiceImpl implements AppUserService {
     }
 
     @Override
+    @Transactional
+    public void verifyEmailByAdmin(Long id) {
+        AppUser user = repo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con id: " + id));
+        user.setEmailVerified(true);
+        repo.save(user);
+        log.info("Email del usuario {} verificado por admin", id);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public AdminStatsResponse getAdminStats() {
         List<AppUser> all = repo.findAll();
