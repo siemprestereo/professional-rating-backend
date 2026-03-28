@@ -7,6 +7,7 @@ import com.example.waiter_rating.repository.AppUserRepo;
 import com.example.waiter_rating.repository.OAuthCodeTokenRepo;
 import com.example.waiter_rating.service.ClientService;
 import com.example.waiter_rating.service.EmailService;
+import com.example.waiter_rating.service.NotificationService;
 import com.example.waiter_rating.service.ProfessionalService;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -33,6 +34,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
     private final ClientService clientService;
     private final ProfessionalService professionalService;
     private final EmailService emailService;
+    private final NotificationService notificationService;
 
     @Value("${app.frontend.url}")
     private String frontendUrl;
@@ -41,12 +43,14 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                                      OAuthCodeTokenRepo oAuthCodeTokenRepo,
                                      ClientService clientService,
                                      ProfessionalService professionalService,
-                                     EmailService emailService) {
+                                     EmailService emailService,
+                                     NotificationService notificationService) {
         this.appUserRepo = appUserRepo;
         this.oAuthCodeTokenRepo = oAuthCodeTokenRepo;
         this.clientService = clientService;
         this.professionalService = professionalService;
         this.emailService = emailService;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -95,6 +99,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             log.info("Creando nuevo profesional: {}", email);
             AppUser newProfessional = professionalService.findOrCreateFromGoogle(email, name, googleId, emailVerified);
             emailService.sendWelcomeEmail(newProfessional.getEmail(), newProfessional.getName(), "PROFESSIONAL");
+            notificationService.sendToUser(newProfessional.getId(), "¡Bienvenido/a a Calificalo!", "Hola " + newProfessional.getName().split(" ")[0] + ", tu cuenta de Profesional está lista. ¡Empezá a armar tu perfil!");
             generateCodeAndRedirect(request, response, newProfessional, UserRole.PROFESSIONAL);
             return;
         }
@@ -127,6 +132,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             log.info("Creando nuevo cliente: {}", email);
             AppUser newClient = clientService.findOrCreateFromGoogle(email, name, googleId, emailVerified);
             emailService.sendWelcomeEmail(newClient.getEmail(), newClient.getName(), "CLIENT");
+            notificationService.sendToUser(newClient.getId(), "¡Bienvenido/a a Calificalo!", "Hola " + newClient.getName().split(" ")[0] + ", tu cuenta de Cliente está lista. ¡Empezá a usar la plataforma!");
             generateCodeAndRedirect(request, response, newClient, UserRole.CLIENT);
             return;
         }

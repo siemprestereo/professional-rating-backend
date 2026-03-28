@@ -163,12 +163,6 @@ public class AppUserServiceImpl implements AppUserService {
         verificationToken.setUsed(true);
         verificationTokenRepository.save(verificationToken);
 
-        String role = user.getActiveRole() != null ? user.getActiveRole().name() : "CLIENT";
-        String rolLabel = "PROFESSIONAL".equals(role) ? "Profesional" : "Cliente";
-        notificationService.sendToUser(user.getId(),
-                "¡Bienvenido/a a Calificalo!",
-                "Hola " + user.getName().split(" ")[0] + ", tu cuenta de " + rolLabel + " está lista. ¡Empezá a usar la plataforma!");
-
         log.info("Email verified for user: {}", user.getEmail());
         return true;
     }

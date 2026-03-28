@@ -5,6 +5,7 @@ import com.example.waiter_rating.repository.*;
 import com.example.waiter_rating.service.AppUserService;
 import com.example.waiter_rating.service.EmailService;
 import com.example.waiter_rating.service.JwtService;
+import com.example.waiter_rating.service.NotificationService;
 import com.example.waiter_rating.service.RateLimiterService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +37,7 @@ public class AuthController {
     private final EmailService emailService;
     private final AppUserService appUserService;
     private final RateLimiterService rateLimiter;
+    private final NotificationService notificationService;
 
     public AuthController(AppUserRepo appUserRepo,
                           PasswordEncoder passwordEncoder,
@@ -48,7 +50,8 @@ public class AuthController {
                           FavoriteProfessionalRepo favoriteProfessionalRepo,
                           EmailService emailService,
                           AppUserService appUserService,
-                          RateLimiterService rateLimiter) {
+                          RateLimiterService rateLimiter,
+                          NotificationService notificationService) {
         this.appUserRepo = appUserRepo;
         this.passwordEncoder = passwordEncoder;
         this.cvRepo = cvRepo;
@@ -61,6 +64,7 @@ public class AuthController {
         this.emailService = emailService;
         this.appUserService = appUserService;
         this.rateLimiter = rateLimiter;
+        this.notificationService = notificationService;
     }
 
     private String getClientIp(HttpServletRequest request) {
@@ -208,6 +212,7 @@ public class AuthController {
 
         professional = appUserRepo.save(professional);
         appUserService.createVerificationToken(professional);
+        notificationService.sendToUser(professional.getId(), "¡Bienvenido/a a Calificalo!", "Hola " + professional.getName().split(" ")[0] + ", tu cuenta de Profesional está lista. ¡Empezá a armar tu perfil!");
 
         String token = jwtService.generateToken(
                 professional.getId(), "PROFESSIONAL", professional.getEmail(), professional.getName()
@@ -256,6 +261,7 @@ public class AuthController {
 
         client = appUserRepo.save(client);
         appUserService.createVerificationToken(client);
+        notificationService.sendToUser(client.getId(), "¡Bienvenido/a a Calificalo!", "Hola " + client.getName().split(" ")[0] + ", tu cuenta de Cliente está lista. ¡Empezá a usar la plataforma!");
 
         String token = jwtService.generateToken(
                 client.getId(), "CLIENT", client.getEmail(), client.getName()
