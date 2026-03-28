@@ -9,6 +9,7 @@ import com.example.waiter_rating.repository.*;
 import com.example.waiter_rating.service.AppUserService;
 import com.example.waiter_rating.service.EmailService;
 import com.example.waiter_rating.service.JwtService;
+import com.example.waiter_rating.service.NotificationService;
 import io.jsonwebtoken.Claims;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +40,7 @@ public class AppUserServiceImpl implements AppUserService {
     private final RatingReportRepo ratingReportRepo;
     private final WorkHistoryRepo workHistoryRepo;
     private final EducationRepo educationRepo;
+    private final NotificationService notificationService;
 
     @Autowired
     public AppUserServiceImpl(AppUserRepo repo,
@@ -56,7 +58,8 @@ public class AppUserServiceImpl implements AppUserService {
                               CertificationRepo certificationRepo,
                               RatingReportRepo ratingReportRepo,
                               WorkHistoryRepo workHistoryRepo,
-                              EducationRepo educationRepo) {
+                              EducationRepo educationRepo,
+                              NotificationService notificationService) {
         this.repo = repo;
         this.jwtService = jwtService;
         this.verificationTokenRepository = verificationTokenRepository;
@@ -73,6 +76,7 @@ public class AppUserServiceImpl implements AppUserService {
         this.ratingReportRepo = ratingReportRepo;
         this.workHistoryRepo = workHistoryRepo;
         this.educationRepo = educationRepo;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -159,6 +163,12 @@ public class AppUserServiceImpl implements AppUserService {
         verificationToken.setUsed(true);
         verificationTokenRepository.save(verificationToken);
 
+        String role = user.getActiveRole() != null ? user.getActiveRole().name() : "CLIENT";
+        String rolLabel = "PROFESSIONAL".equals(role) ? "Profesional" : "Cliente";
+        notificationService.sendToUser(user.getId(),
+                "¡Bienvenido/a a Calificalo!",
+                "Hola " + user.getName().split(" ")[0] + ", tu cuenta de " + rolLabel + " está lista. ¡Empezá a usar la plataforma!");
+
         log.info("Email verified for user: {}", user.getEmail());
         return true;
     }
@@ -219,7 +229,12 @@ public class AppUserServiceImpl implements AppUserService {
 
     @Override
     public void sendWelcomeEmail(AppUser user) {
-        emailService.sendWelcomeEmail(user.getEmail(), user.getName(), user.getActiveRole() != null ? user.getActiveRole().name() : "CLIENT");
+        String role = user.getActiveRole() != null ? user.getActiveRole().name() : "CLIENT";
+        emailService.sendWelcomeEmail(user.getEmail(), user.getName(), role);
+        String rolLabel = "PROFESSIONAL".equals(role) ? "Profesional" : "Cliente";
+        notificationService.sendToUser(user.getId(),
+                "¡Bienvenido/a a Calificalo!",
+                "Hola " + user.getName().split(" ")[0] + ", tu cuenta de " + rolLabel + " está lista. ¡Empezá a usar la plataforma!");
         log.info("Welcome email sent to: {}", user.getEmail());
     }
 

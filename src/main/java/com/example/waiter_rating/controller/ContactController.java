@@ -6,6 +6,7 @@ import com.example.waiter_rating.repository.ContactMessageRepo;
 import com.example.waiter_rating.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -23,7 +24,7 @@ public class ContactController {
     private final EmailService emailService;
 
     @PostMapping("/support")
-    public ResponseEntity<?> submitSupport(@RequestBody Map<String, String> body) {
+    public ResponseEntity<?> submitSupport(@RequestBody Map<String, String> body, HttpServletRequest request) {
         String message = body.get("message");
         if (message == null || message.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "El mensaje no puede estar vacío"));
@@ -41,6 +42,8 @@ public class ContactController {
         cm.setSenderName(senderName);
         cm.setSenderEmail(senderEmail);
         cm.setMessage(message.trim());
+        Long userId = (Long) request.getAttribute("userId");
+        if (userId != null) cm.setUserId(userId);
         contactMessageRepo.save(cm);
 
         log.info("Mensaje de soporte recibido de: {}", senderEmail);

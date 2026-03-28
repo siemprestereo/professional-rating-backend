@@ -36,6 +36,9 @@ public class ContactMessage {
     @Column(nullable = false, length = 20)
     private ContactMessageStatus status = ContactMessageStatus.OPEN;
 
+    @Column(name = "user_id")
+    private Long userId;
+
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 }
