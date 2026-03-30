@@ -636,11 +636,20 @@ public class CvController {
         try {
             byte[] pdfBytes = pdfService.generateCvPdf(professionalId);
 
+            String professionalName = "Profesional";
+            try {
+                Cv cv = cvService.getPublicCv(professionalId);
+                professionalName = cv.getProfessional().getName()
+                        .replaceAll("[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ\\s]", "")
+                        .trim()
+                        .replaceAll("\\s+", "_");
+            } catch (Exception ignored) {}
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
             headers.setContentDisposition(
                     ContentDisposition.builder("attachment")
-                            .filename("CV_Profesional_" + professionalId + ".pdf")
+                            .filename("CV_" + professionalName + ".pdf")
                             .build()
             );
 
