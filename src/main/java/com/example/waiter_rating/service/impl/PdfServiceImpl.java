@@ -105,6 +105,24 @@ public class PdfServiceImpl implements PdfService {
                     .setFont(regularFont).setFontSize(10).setMultipliedLeading(1.5f).setTextAlignment(TextAlignment.JUSTIFIED).setMarginBottom(20));
         }
 
+        if (professional.getCv() != null && professional.getCv().getSkills() != null && !professional.getCv().getSkills().isBlank()) {
+            addContentSectionTitle(rightColumn, "APTITUDES Y HABILIDADES", boldFont);
+            String[] skillTags = professional.getCv().getSkills().split(",");
+            Paragraph skillsPara = new Paragraph().setMarginBottom(20);
+            for (int i = 0; i < skillTags.length; i++) {
+                String tag = skillTags[i].trim();
+                if (!tag.isEmpty()) {
+                    skillsPara.add(new Text("  " + tag + "  ").setFont(regularFont).setFontSize(9)
+                            .setFontColor(PRIMARY_COLOR)
+                            .setBackgroundColor(new DeviceRgb(238, 242, 255)));
+                    if (i < skillTags.length - 1) {
+                        skillsPara.add(new Text("  ").setFont(regularFont));
+                    }
+                }
+            }
+            rightColumn.add(skillsPara);
+        }
+
         if (!workHistory.isEmpty()) {
             addContentSectionTitle(rightColumn, "EXPERIENCIA LABORAL", boldFont);
             addTimelineExperience(rightColumn, workHistory, boldFont, regularFont);

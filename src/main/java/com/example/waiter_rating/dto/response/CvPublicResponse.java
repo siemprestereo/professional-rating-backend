@@ -15,6 +15,7 @@ public class CvPublicResponse {
     private String professionType;
 
     private String description;
+    private String skills;
     private Double reputationScore;
     private Integer totalRatings;
 

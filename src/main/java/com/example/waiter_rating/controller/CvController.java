@@ -85,6 +85,7 @@ public class CvController {
                 "id", cv.getId(),
                 "professionalId", cv.getProfessional().getId(),
                 "description", cv.getDescription() != null ? cv.getDescription() : "",
+                "skills", cv.getSkills() != null ? cv.getSkills() : "",
                 "workExperiences", cv.getProfessional().getWorkHistory() != null
                         ? cv.getProfessional().getWorkHistory().stream().map(this::toItem).toList()
                         : List.of(),
@@ -111,6 +112,29 @@ public class CvController {
         }
 
         Cv cv = cvService.updateDescription(userId, req.getDescription());
+        Cv refreshed = cvService.getPublicCv(userId);
+
+        return ResponseEntity.ok(toPublicResponse(refreshed));
+    }
+
+    /**
+     * Actualizar MIS habilidades (aptitudes)
+     */
+    @PutMapping("/me/skills")
+    public ResponseEntity<?> updateMySkills(
+            @RequestBody Map<String, String> body,
+            HttpServletRequest request) {
+
+        Long userId = (Long) request.getAttribute("userId");
+        String userType = (String) request.getAttribute("userType");
+
+        if (userId == null || !"PROFESSIONAL".equals(userType)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Solo los professionals pueden editar su CV"));
+        }
+
+        String skills = body.get("skills");
+        Cv cv = cvService.updateSkills(userId, skills);
         Cv refreshed = cvService.getPublicCv(userId);
 
         return ResponseEntity.ok(toPublicResponse(refreshed));
@@ -370,6 +394,13 @@ public class CvController {
                 String description = (String) updates.get("description");
                 cvService.updateDescription(userId, description);
                 System.out.println("✏️ Descripción actualizada: " + description);
+            }
+
+            // 0b. Actualizar habilidades
+            if (updates.containsKey("skills")) {
+                String skills = (String) updates.get("skills");
+                cvService.updateSkills(userId, skills);
+                System.out.println("🏷️ Habilidades actualizadas: " + skills);
             }
 
             // 1. Actualizar work experiences (mantenido por compatibilidad)
@@ -731,6 +762,7 @@ public class CvController {
         dto.setProfessionType(p.getProfessionType());
 
         dto.setDescription(cv.getDescription());
+        dto.setSkills(cv.getSkills());
         dto.setReputationScore(cv.getReputationScore() != null ? cv.getReputationScore().doubleValue() : 0.0);
         dto.setTotalRatings(cv.getTotalRatings());
 

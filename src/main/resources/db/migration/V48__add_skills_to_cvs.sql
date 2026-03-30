@@ -1,0 +1,1 @@
+ALTER TABLE cvs ADD COLUMN skills TEXT NULL;

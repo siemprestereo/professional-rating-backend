@@ -27,6 +27,10 @@ public class Cv {
     @Column(length = 1000)
     private String description;
 
+    /** Habilidades separadas por coma (ej: "Excel,Inglés B2,Liderazgo") */
+    @Column(columnDefinition = "TEXT")
+    private String skills;
+
     /** Slug público para URL amigable (ej: /cv/juan-perez-electricista) */
     @Column(name = "public_slug", length = 64, unique = true)
     private String publicSlug;
