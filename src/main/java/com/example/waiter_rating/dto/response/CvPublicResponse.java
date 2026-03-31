@@ -13,6 +13,7 @@ public class CvPublicResponse {
     private String professionalLocation;
     private String profilePicture;
     private String professionType;
+    private String professionalTitle;
 
     private String description;
     private String skills;

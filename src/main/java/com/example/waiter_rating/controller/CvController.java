@@ -765,6 +765,7 @@ public class CvController {
         dto.setProfessionalLocation(p.getLocation());
         dto.setProfilePicture(p.getProfilePicture());
         dto.setProfessionType(p.getProfessionType());
+        dto.setProfessionalTitle(p.getProfessionalTitle());
 
         dto.setDescription(cv.getDescription());
         dto.setSkills(cv.getSkills());
