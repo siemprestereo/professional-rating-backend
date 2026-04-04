@@ -16,6 +16,7 @@ public class RatingReportResponse {
     private Long reporterId;
     private String reporterName;
     private String reason;
+    private String description;
     private ReportStatus status;
     private String adminNotes;
     private LocalDateTime createdAt;
