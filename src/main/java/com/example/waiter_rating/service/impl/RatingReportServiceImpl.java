@@ -61,6 +61,7 @@ public class RatingReportServiceImpl implements RatingReportService {
                 .rating(rating)
                 .reporter(reporter)
                 .reason(request.getReason())
+                .description(request.getDescription())
                 .status(ReportStatus.PENDING)
                 .build();
 
@@ -114,6 +115,7 @@ public class RatingReportServiceImpl implements RatingReportService {
         dto.setRatingScore(r.getRating().getScore());
         dto.setRatingComment(r.getRating().getComment());
         dto.setReason(r.getReason());
+        dto.setDescription(r.getDescription());
         dto.setStatus(r.getStatus());
         dto.setAdminNotes(r.getAdminNotes());
         dto.setCreatedAt(r.getCreatedAt());

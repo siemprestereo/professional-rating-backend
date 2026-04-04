@@ -36,6 +36,9 @@ public class RatingReport {
     @Builder.Default
     private ReportStatus status = ReportStatus.PENDING;
 
+    @Column(length = 1000)
+    private String description;
+
     @Column(name = "admin_notes", length = 500)
     private String adminNotes;
 
