@@ -618,6 +618,13 @@ public class CvController {
         }
     }
 
+    @GetMapping("/slug/{slug}")
+    public ResponseEntity<?> getPublicBySlug(@PathVariable String slug) {
+        return cvService.getByPublicSlug(slug)
+                .map(cv -> ResponseEntity.ok(toPublicResponse(cv)))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     /**
      * Listar historial laboral de un professional (PÚBLICO)
      */
@@ -825,6 +832,7 @@ public class CvController {
 
         CvPublicResponse dto = new CvPublicResponse();
         dto.setProfessionalId(p.getId());
+        dto.setPublicSlug(cv.getPublicSlug());
         dto.setProfessionalName(p.getName());
         dto.setProfessionalEmail(p.getEmail());
         dto.setProfessionalPhone(p.getPhone());

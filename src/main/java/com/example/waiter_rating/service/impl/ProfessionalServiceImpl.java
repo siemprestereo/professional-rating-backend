@@ -5,6 +5,7 @@ import com.example.waiter_rating.dto.response.ProfessionalResponse;
 import com.example.waiter_rating.model.AppUser;
 import com.example.waiter_rating.model.UserRole;
 import com.example.waiter_rating.repository.AppUserRepo;
+import com.example.waiter_rating.repository.CvRepo;
 import com.example.waiter_rating.repository.RatingRepo;
 import com.example.waiter_rating.service.ProfessionalService;
 import org.springframework.stereotype.Service;
@@ -21,10 +22,12 @@ public class ProfessionalServiceImpl implements ProfessionalService {
 
     private final AppUserRepo appUserRepo;
     private final RatingRepo ratingRepo;
+    private final CvRepo cvRepo;
 
-    public ProfessionalServiceImpl(AppUserRepo appUserRepo, RatingRepo ratingRepo) {
+    public ProfessionalServiceImpl(AppUserRepo appUserRepo, RatingRepo ratingRepo, CvRepo cvRepo) {
         this.appUserRepo = appUserRepo;
         this.ratingRepo = ratingRepo;
+        this.cvRepo = cvRepo;
     }
 
     @Override
@@ -219,6 +222,8 @@ public class ProfessionalServiceImpl implements ProfessionalService {
         response.setCanChangeWorkplace(canChangeWorkplace(professional));
         response.setLocation(professional.getLocation());
         response.setProfessionalTitle(professional.getProfessionalTitle());
+        cvRepo.findByProfessionalId(professional.getId())
+                .ifPresent(cv -> response.setPublicSlug(cv.getPublicSlug()));
         return response;
     }
 

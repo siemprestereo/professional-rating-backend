@@ -292,8 +292,11 @@ public class ProfessionalController {
                     .collect(Collectors.toList());
         }
 
+        String publicSlug = p.getCv() != null ? p.getCv().getPublicSlug() : null;
+
         Map<String, Object> response = new HashMap<>();
         response.put("id", p.getId());
+        response.put("publicSlug", publicSlug);
         response.put("name", p.getName() != null ? p.getName() : "");
         response.put("professionType", p.getProfessionType() != null ? p.getProfessionType() : "");
         response.put("location", p.getLocation() != null ? p.getLocation() : "");
