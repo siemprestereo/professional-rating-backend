@@ -41,6 +41,7 @@ public class CvServiceImpl implements CvService {
         Cv cv = Cv.builder()
                 .professional(professional)
                 .description("")
+                .publicSlug(java.util.UUID.randomUUID().toString())
                 .reputationScore(professional.getReputationScore() != null ? professional.getReputationScore() : 0.0)
                 .totalRatings(professional.getTotalRatings() != null ? professional.getTotalRatings() : 0)
                 .build();

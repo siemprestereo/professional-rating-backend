@@ -9,6 +9,7 @@ import com.example.waiter_rating.model.Rating;
 import com.example.waiter_rating.model.UserRole;
 import com.example.waiter_rating.model.WorkHistory;
 import com.example.waiter_rating.repository.AppUserRepo;
+import com.example.waiter_rating.repository.CvRepo;
 import com.example.waiter_rating.repository.FavoriteProfessionalRepo;
 import com.example.waiter_rating.repository.ProfessionalZoneRepo;
 import com.example.waiter_rating.repository.RatingRepo;
@@ -28,16 +29,19 @@ public class FavoriteProfessionalServiceImpl implements FavoriteProfessionalServ
     private final AppUserRepo appUserRepo;
     private final RatingRepo ratingRepo;
     private final ProfessionalZoneRepo professionalZoneRepo;
+    private final CvRepo cvRepo;
 
     public FavoriteProfessionalServiceImpl(
             FavoriteProfessionalRepo favoriteProfessionalRepo,
             AppUserRepo appUserRepo,
             RatingRepo ratingRepo,
-            ProfessionalZoneRepo professionalZoneRepo) {
+            ProfessionalZoneRepo professionalZoneRepo,
+            CvRepo cvRepo) {
         this.favoriteProfessionalRepo = favoriteProfessionalRepo;
         this.appUserRepo = appUserRepo;
         this.ratingRepo = ratingRepo;
         this.professionalZoneRepo = professionalZoneRepo;
+        this.cvRepo = cvRepo;
     }
 
     @Override
@@ -140,9 +144,13 @@ public class FavoriteProfessionalServiceImpl implements FavoriteProfessionalServ
                 .map(this::mapWorkHistoryToResponse)
                 .collect(Collectors.toList());
 
+        String publicSlug = cvRepo.findByProfessionalId(prof.getId())
+                .map(cv -> cv.getPublicSlug()).orElse(null);
+
         return FavoriteProfessionalResponse.builder()
                 .favoriteId(favorite.getId())
                 .professionalId(prof.getId())
+                .publicSlug(publicSlug)
                 .professionalName(prof.getName())
                 .professionalEmail(prof.getEmail())
                 .professionType(prof.getProfessionType())
@@ -175,9 +183,13 @@ public class FavoriteProfessionalServiceImpl implements FavoriteProfessionalServ
                 .map(work -> mapWorkHistoryWithStats(work, startDateTime, endDateTime))
                 .collect(Collectors.toList());
 
+        String publicSlug = cvRepo.findByProfessionalId(prof.getId())
+                .map(cv -> cv.getPublicSlug()).orElse(null);
+
         return FavoriteProfessionalResponse.builder()
                 .favoriteId(favorite.getId())
                 .professionalId(prof.getId())
+                .publicSlug(publicSlug)
                 .professionalName(prof.getName())
                 .professionalEmail(prof.getEmail())
                 .professionType(prof.getProfessionType())

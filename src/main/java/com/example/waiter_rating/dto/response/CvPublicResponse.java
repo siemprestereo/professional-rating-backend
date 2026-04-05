@@ -7,6 +7,7 @@ import java.util.List;
 @Data
 public class CvPublicResponse {
     private Long professionalId;
+    private String publicSlug;
     private String professionalName;
     private String professionalEmail;
     private String professionalPhone;

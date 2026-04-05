@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 @Data
 public class ProfessionalResponse {
     private Long id;
+    private String publicSlug;
     private String name;
     private String email;
     private String phone;

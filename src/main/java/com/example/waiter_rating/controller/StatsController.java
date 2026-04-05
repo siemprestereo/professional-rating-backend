@@ -1,5 +1,6 @@
 package com.example.waiter_rating.controller;
 
+import com.example.waiter_rating.repository.CvRepo;
 import com.example.waiter_rating.repository.RatingRepo;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,45 +13,77 @@ import java.util.stream.Collectors;
 public class StatsController {
 
     private final RatingRepo ratingRepository;
+    private final CvRepo cvRepo;
 
-    public StatsController(RatingRepo ratingRepository) {
+    public StatsController(RatingRepo ratingRepository, CvRepo cvRepo) {
         this.ratingRepository = ratingRepository;
+        this.cvRepo = cvRepo;
     }
 
     @GetMapping("/professional/{professionalId}/by-month")
     public ResponseEntity<?> getRatingsByMonth(@PathVariable Long professionalId) {
+        return ResponseEntity.ok(buildByMonth(professionalId));
+    }
+
+    @GetMapping("/slug/{slug}/by-month")
+    public ResponseEntity<?> getRatingsByMonthSlug(@PathVariable String slug) {
+        return cvRepo.findByPublicSlug(slug)
+                .map(cv -> ResponseEntity.ok(buildByMonth(cv.getProfessional().getId())))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/professional/{professionalId}/by-business")
+    public ResponseEntity<?> getRatingsByBusiness(@PathVariable Long professionalId) {
+        return ResponseEntity.ok(buildByBusiness(professionalId));
+    }
+
+    @GetMapping("/slug/{slug}/by-business")
+    public ResponseEntity<?> getRatingsByBusinessSlug(@PathVariable String slug) {
+        return cvRepo.findByPublicSlug(slug)
+                .map(cv -> ResponseEntity.ok(buildByBusiness(cv.getProfessional().getId())))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/professional/{professionalId}/by-profession-type")
+    public ResponseEntity<?> getRatingsByProfessionType(@PathVariable Long professionalId) {
+        return ResponseEntity.ok(buildByProfessionType(professionalId));
+    }
+
+    @GetMapping("/slug/{slug}/by-profession-type")
+    public ResponseEntity<?> getRatingsByProfessionTypeSlug(@PathVariable String slug) {
+        return cvRepo.findByPublicSlug(slug)
+                .map(cv -> ResponseEntity.ok(buildByProfessionType(cv.getProfessional().getId())))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    // ========== helpers ==========
+
+    private List<Map<String, Object>> buildByMonth(Long professionalId) {
         var ratings = ratingRepository.findByProfessionalId(professionalId);
 
-        // Agrupar por mes
         Map<String, List<Integer>> byMonth = ratings.stream()
                 .collect(Collectors.groupingBy(
-                        r -> r.getCreatedAt().toString().substring(0, 7), // YYYY-MM
+                        r -> r.getCreatedAt().toString().substring(0, 7),
                         Collectors.mapping(r -> r.getScore(), Collectors.toList())
                 ));
 
-        // Calcular promedio por mes
-        List<Map<String, Object>> result = byMonth.entrySet().stream()
+        return byMonth.entrySet().stream()
                 .map(entry -> {
                     Map<String, Object> monthData = new HashMap<>();
                     monthData.put("month", entry.getKey());
                     monthData.put("average", entry.getValue().stream()
-                            .mapToInt(Integer::intValue)
-                            .average()
-                            .orElse(0.0));
+                            .mapToInt(Integer::intValue).average().orElse(0.0));
                     monthData.put("count", entry.getValue().size());
                     return monthData;
                 })
                 .sorted((a, b) -> ((String) a.get("month")).compareTo((String) b.get("month")))
                 .collect(Collectors.toList());
-
-        return ResponseEntity.ok(result);
     }
 
-    @GetMapping("/professional/{professionalId}/by-business")
-    public ResponseEntity<?> getRatingsByBusiness(@PathVariable Long professionalId) {
+    private List<Map<String, Object>> buildByBusiness(Long professionalId) {
         List<Object[]> rows = ratingRepository.findRatingStatsByProfessionalGroupedByWorkHistory(professionalId);
 
-        List<Map<String, Object>> result = rows.stream()
+        return rows.stream()
                 .map(row -> {
                     Map<String, Object> item = new HashMap<>();
                     item.put("workHistoryId", ((Number) row[0]).longValue());
@@ -61,30 +94,23 @@ public class StatsController {
                     return item;
                 })
                 .collect(Collectors.toList());
-
-        return ResponseEntity.ok(result);
     }
 
-    @GetMapping("/professional/{professionalId}/by-profession-type")
-    public ResponseEntity<?> getRatingsByProfessionType(@PathVariable Long professionalId) {
+    private Object buildByProfessionType(Long professionalId) {
         var ratings = ratingRepository.findByProfessionalId(professionalId);
 
         if (ratings.isEmpty()) {
-            return ResponseEntity.ok(Collections.emptyList());
+            return Collections.emptyList();
         }
 
-        // Obtener el tipo de profesión
         String professionType = ratings.get(0).getProfessional().getProfessionType();
 
-        // Calcular estadísticas generales
         Map<String, Object> stats = new HashMap<>();
         stats.put("professionType", professionType);
         stats.put("totalRatings", ratings.size());
         stats.put("averageScore", ratings.stream()
-                .mapToInt(r -> r.getScore())
-                .average()
-                .orElse(0.0));
+                .mapToInt(r -> r.getScore()).average().orElse(0.0));
 
-        return ResponseEntity.ok(stats);
+        return stats;
     }
 }
