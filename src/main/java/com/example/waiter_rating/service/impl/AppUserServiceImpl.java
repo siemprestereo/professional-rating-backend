@@ -260,6 +260,9 @@ public class AppUserServiceImpl implements AppUserService {
                             .average()
                             .orElse(0.0);
 
+                    String publicSlug = cvRepo.findByProfessionalId(u.getId())
+                            .map(cv -> cv.getPublicSlug()).orElse(null);
+
                     return new AdminUserResponse(
                             u.getId(),
                             u.getName(),
@@ -270,7 +273,8 @@ public class AppUserServiceImpl implements AppUserService {
                             u.getAuthProvider().name(),
                             u.getCreatedAt(),
                             ratingsCount,
-                            avgGiven
+                            avgGiven,
+                            publicSlug
                     );
                 })
                 .toList();
