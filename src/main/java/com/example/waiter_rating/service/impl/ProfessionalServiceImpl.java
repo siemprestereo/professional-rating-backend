@@ -222,6 +222,9 @@ public class ProfessionalServiceImpl implements ProfessionalService {
         response.setCanChangeWorkplace(canChangeWorkplace(professional));
         response.setLocation(professional.getLocation());
         response.setProfessionalTitle(professional.getProfessionalTitle());
+        response.setBirthDate(professional.getBirthDate());
+        response.setProfessionTypes(professional.getProfessionTypes() != null
+                ? new java.util.ArrayList<>(professional.getProfessionTypes()) : java.util.List.of());
         cvRepo.findByProfessionalId(professional.getId())
                 .ifPresent(cv -> response.setPublicSlug(cv.getPublicSlug()));
         return response;

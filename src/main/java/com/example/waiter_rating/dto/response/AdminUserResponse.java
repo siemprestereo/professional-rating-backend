@@ -12,5 +12,6 @@ public record AdminUserResponse(
         String authProvider,
         LocalDateTime createdAt,
         Integer totalRatings,
-        Double averageScoreGiven
+        Double averageScoreGiven,
+        String publicSlug
 ) {}

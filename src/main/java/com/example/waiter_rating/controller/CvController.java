@@ -834,6 +834,8 @@ public class CvController {
         dto.setProfessionalId(p.getId());
         dto.setPublicSlug(cv.getPublicSlug());
         dto.setProfessionalName(p.getName());
+        dto.setProfessionTypes(p.getProfessionTypes() != null
+                ? new java.util.ArrayList<>(p.getProfessionTypes()) : java.util.List.of());
         dto.setProfessionalEmail(p.getEmail());
         dto.setProfessionalPhone(p.getPhone());
         dto.setProfessionalLocation(p.getLocation());
@@ -843,8 +845,8 @@ public class CvController {
 
         dto.setDescription(cv.getDescription());
         dto.setSkills(cv.getSkills());
-        dto.setReputationScore(cv.getReputationScore() != null ? cv.getReputationScore().doubleValue() : 0.0);
-        dto.setTotalRatings(cv.getTotalRatings());
+        dto.setReputationScore(p.getReputationScore() != null ? p.getReputationScore() : 0.0);
+        dto.setTotalRatings(p.getTotalRatings() != null ? p.getTotalRatings() : 0);
 
         // Historial laboral
         dto.setWorkHistory(p.getWorkHistory() != null
