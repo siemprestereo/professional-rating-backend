@@ -32,7 +32,7 @@ public class ProfessionSeeder implements ApplicationRunner {
         new Seed("GARDENER",                     "Jardinero/a",                "Hogar y mantenimiento"),
         new Seed("AIR_CONDITIONING_TECHNICIAN",  "Instalador de A.A",          "Hogar y mantenimiento"),
         new Seed("CLEANER",                      "Personal de Limpieza",       "Hogar y mantenimiento"),
-        new Seed("PILATES",                      "Instructora de pilates",     "Salud y bienestar"),
+        new Seed("PILATES",                      "Instructora de pilates",     "Salud, bienestar y recreaci\u00f3n"),
         new Seed("HAIRDRESSER",                  "Peluquero/a",                "Belleza"),
         new Seed("MECHANIC",                     "Mec\u00e1nico/a",            "Servicios"),
         new Seed("DRIVER",                       "Conductor",                  "Servicios"),
