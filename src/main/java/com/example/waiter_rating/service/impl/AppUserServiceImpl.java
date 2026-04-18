@@ -307,9 +307,14 @@ public class AppUserServiceImpl implements AppUserService {
         // Datos de profesional
         certificationRepo.deleteAll(certificationRepo.findByProfessionalId(id));
         educationRepo.deleteByProfessionalId(id);
-        ratingRepo.nullifyClientByUserId(id);
-        ratingRepo.nullifyProfessionalByUserId(id);
-        ratingRepo.nullifyWorkHistoryByProfessionalId(id);
+        List<Rating> professionalRatings = ratingRepo.findByProfessionalId(id);
+        professionalRatings.forEach(r -> ratingReportRepo.deleteByRatingId(r.getId()));
+        ratingRepo.deleteAll(professionalRatings);
+
+        List<Rating> clientRatings = ratingRepo.findByClientId(id);
+        clientRatings.forEach(r -> ratingReportRepo.deleteByRatingId(r.getId()));
+        ratingRepo.deleteAll(clientRatings);
+
         workHistoryRepo.deleteByProfessionalId(id);
 
         if (user.getCv() != null) {
