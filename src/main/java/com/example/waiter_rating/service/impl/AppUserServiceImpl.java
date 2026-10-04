@@ -307,14 +307,8 @@ public class AppUserServiceImpl implements AppUserService {
         // Datos de profesional
         certificationRepo.deleteAll(certificationRepo.findByProfessionalId(id));
         educationRepo.deleteByProfessionalId(id);
-        List<Rating> professionalRatings = ratingRepo.findByProfessionalId(id);
-        professionalRatings.forEach(r -> ratingReportRepo.deleteByRatingId(r.getId()));
-        ratingRepo.deleteAll(professionalRatings);
-
-        List<Rating> clientRatings = ratingRepo.findByClientId(id);
-        clientRatings.forEach(r -> ratingReportRepo.deleteByRatingId(r.getId()));
-        ratingRepo.deleteAll(clientRatings);
-
+        // Los ratings persisten: la FK (ON DELETE SET NULL) anula professional_id/client_id
+        // y los snapshots de nombre conservan el dato.
         workHistoryRepo.deleteByProfessionalId(id);
 
         if (user.getCv() != null) {

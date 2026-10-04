@@ -95,6 +95,7 @@ public class RatingServiceImpl implements RatingService {
                 .businessName(business.getName())             // ← snapshot
                 .workHistory(workHistory)
                 .client(client)
+                .clientName(client != null ? client.getName() : null)  // ← snapshot
                 .score(request.getScore())
                 .comment(comment)
                 .serviceDate(LocalDateTime.now())
@@ -148,6 +149,7 @@ public class RatingServiceImpl implements RatingService {
                 .businessName(business.getName())             // ← snapshot
                 .workHistory(workHistory)
                 .client(client)
+                .clientName(client != null ? client.getName() : null)  // ← snapshot
                 .score(request.getScore())
                 .comment(comment)
                 .serviceDate(LocalDateTime.now())

@@ -46,6 +46,10 @@ public class Rating {
     @Column(name = "business_name", length = 100)
     private String businessName;
 
+    // Snapshot del nombre del cliente al momento de la calificación
+    @Column(name = "client_name", length = 100)
+    private String clientName;
+
     @Min(1)
     @Max(5)
     @Column(nullable = false)

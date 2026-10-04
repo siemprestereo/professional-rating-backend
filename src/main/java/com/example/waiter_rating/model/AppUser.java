@@ -124,7 +124,7 @@ public class AppUser {
     private Cv cv;
 
     // Ratings recibidos (solo para professionals)
-    @OneToMany(mappedBy = "professional", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "professional", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @Builder.Default
     private List<Rating> ratingsReceived = new ArrayList<>();
 

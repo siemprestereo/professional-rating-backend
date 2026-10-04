@@ -250,6 +250,11 @@ public class RatingController {
             } else {
                 dto.setClientName("Usuario");
             }
+        } else {
+            String snapshot = r.getClientName();
+            dto.setClientName(snapshot != null && !snapshot.isBlank()
+                    ? snapshot.trim().split("\\s+")[0]
+                    : "Usuario eliminado");
         }
 
         // Business info
