@@ -3,8 +3,10 @@ package com.example.waiter_rating.controller;
 import com.example.waiter_rating.dto.request.ProfessionalRequest;
 import com.example.waiter_rating.dto.response.ProfessionalResponse;
 import com.example.waiter_rating.model.AppUser;
+import com.example.waiter_rating.model.Profession;
 import com.example.waiter_rating.model.UserRole;
 import com.example.waiter_rating.repository.AppUserRepo;
+import com.example.waiter_rating.repository.ProfessionRepo;
 import com.example.waiter_rating.repository.ProfessionalZoneRepo;
 import com.example.waiter_rating.service.ProfessionalService;
 import jakarta.validation.Valid;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -32,13 +35,16 @@ public class ProfessionalController {
     private final ProfessionalService professionalService;
     private final AppUserRepo appUserRepo;
     private final ProfessionalZoneRepo professionalZoneRepo;
+    private final ProfessionRepo professionRepo;
 
     public ProfessionalController(ProfessionalService professionalService,
                                   AppUserRepo appUserRepo,
-                                  ProfessionalZoneRepo professionalZoneRepo) {
+                                  ProfessionalZoneRepo professionalZoneRepo,
+                                  ProfessionRepo professionRepo) {
         this.professionalService = professionalService;
         this.appUserRepo = appUserRepo;
         this.professionalZoneRepo = professionalZoneRepo;
+        this.professionRepo = professionRepo;
     }
 
     @PostMapping
@@ -61,13 +67,21 @@ public class ProfessionalController {
                     ? location.toLowerCase().trim()
                     : null;
 
+            // code -> nombre visible (tabla professions), para buscar por el nombre real de cada profesión
+            Map<String, String> professionNames = professionRepo.findAll().stream()
+                    .collect(Collectors.toMap(Profession::getCode, Profession::getDisplayName, (a, b) -> a));
+
             List<AppUser> professionals = appUserRepo.findSearchableProfessionals().stream()
                     .filter(p -> p.getWorkHistory() != null &&
                             p.getWorkHistory().stream().anyMatch(wh -> wh.getIsActive()))
                     .filter(p -> {
                         if (p.getName() != null && p.getName().toLowerCase().contains(searchTerm)) return true;
-                        if (p.getProfessionType() != null) {
-                            String professionName = translateProfession(p.getProfessionType());
+                        // Todas las profesiones del usuario: lista nueva + campo legacy
+                        Set<String> professionCodes = new HashSet<>();
+                        if (p.getProfessionTypes() != null) professionCodes.addAll(p.getProfessionTypes());
+                        if (p.getProfessionType() != null) professionCodes.add(p.getProfessionType());
+                        for (String code : professionCodes) {
+                            String professionName = professionNames.getOrDefault(code, translateProfession(code));
                             if (professionName.toLowerCase().contains(searchTerm)) return true;
                         }
                         if (p.getLocation() != null && p.getLocation().toLowerCase().contains(searchTerm)) return true;
